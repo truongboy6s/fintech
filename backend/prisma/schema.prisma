@@ -1,14 +1,84 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String
+  password     String
+  isVerified   Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  budgets      Budget[]
+  categories   Category[]
+  transactions Transaction[]
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  name         String
+  icon         String?
+  color        String?
+  type         CategoryType
+  userId       String
+  parentId     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  budgets      Budget[]
+  parent       Category?     @relation("CategoryParent", fields: [parentId], references: [id])
+  children     Category[]    @relation("CategoryParent")
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  amount      Float
+  description String?
+  type        TransactionType
+  date        DateTime
+  userId      String
+  categoryId  String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  category    Category        @relation(fields: [categoryId], references: [id])
+  user        User            @relation(fields: [userId], references: [id])
+}
+
+model Budget {
+  id             String       @id @default(uuid())
+  name           String
+  amount         Float
+  spent          Float        @default(0)
+  period         BudgetPeriod
+  startDate      DateTime
+  endDate        DateTime
+  alertThreshold Float?
+  userId         String
+  categoryId     String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  category       Category     @relation(fields: [categoryId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum BudgetPeriod {
+  WEEK
+  MONTH
+  YEAR
 }
