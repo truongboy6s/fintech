@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export interface Transaction {
   id: string;
   amount: number;
@@ -17,11 +17,14 @@ const transactionSlice = createSlice({
   name: 'transactions',
   initialState,
   reducers: {
-    addTransaction(state, action) {
+    addTransaction(
+      state,
+      action: PayloadAction<Transaction>
+    ) {
       state.list.push(action.payload);
     },
   },
 });
 
 export const { addTransaction } = transactionSlice.actions;
-export default transactionSlice.reducer; // 👈 QUAN TRỌNG
+export default transactionSlice.reducer;

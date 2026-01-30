@@ -1,0 +1,129 @@
+### Test Finance API Endpoints
+@baseUrl = http://localhost:3000/api
+@token = 
+
+### 1. Register new user
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "name": "Test User",
+  "password": "password123"
+}
+
+### 2. Login
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Extract token (run after login)
+@token = {{login.response.body.accessToken}}
+
+### 3. Get current user
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+### 4. Create Category (Expense)
+# @name createCategory
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Food & Drink",
+  "icon": "🍔",
+  "color": "#FF5733",
+  "type": "EXPENSE"
+}
+
+### 5. Create Category (Income)
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Salary",
+  "icon": "💰",
+  "color": "#28a745",
+  "type": "INCOME"
+}
+
+### 6. Get all categories
+GET {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+
+### 7. Create Transaction (Expense)
+POST {{baseUrl}}/transactions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "amount": 50000,
+  "description": "Lunch at restaurant",
+  "type": "EXPENSE",
+  "date": "2026-01-30",
+  "categoryId": "{{createCategory.response.body.id}}"
+}
+
+### 8. Create Transaction (Income)
+POST {{baseUrl}}/transactions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "amount": 5000000,
+  "description": "Monthly salary",
+  "type": "INCOME",
+  "date": "2026-01-30",
+  "categoryId": "REPLACE_WITH_INCOME_CATEGORY_ID"
+}
+
+### 9. Get all transactions
+GET {{baseUrl}}/transactions
+Authorization: Bearer {{token}}
+
+### 10. Get transaction stats
+GET {{baseUrl}}/transactions/stats?startDate=2026-01-01&endDate=2026-01-31
+Authorization: Bearer {{token}}
+
+### 11. Create Budget
+POST {{baseUrl}}/budgets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Food Budget January",
+  "amount": 5000000,
+  "period": "MONTH",
+  "startDate": "2026-01-01",
+  "endDate": "2026-01-31",
+  "alertThreshold": 80,
+  "categoryId": "{{createCategory.response.body.id}}"
+}
+
+### 12. Get all budgets
+GET {{baseUrl}}/budgets
+Authorization: Bearer {{token}}
+
+### 13. Get monthly report
+GET {{baseUrl}}/reports/monthly?year=2026&month=1
+Authorization: Bearer {{token}}
+
+### 14. Get trend report
+GET {{baseUrl}}/reports/trend?months=6
+Authorization: Bearer {{token}}
+
+### 15. Export transactions (JSON)
+GET {{baseUrl}}/export/transactions?format=json
+Authorization: Bearer {{token}}
+
+### 16. Get user stats
+GET {{baseUrl}}/users/stats
+Authorization: Bearer {{token}}
