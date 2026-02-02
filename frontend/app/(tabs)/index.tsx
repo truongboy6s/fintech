@@ -16,6 +16,7 @@ import { Layout } from '@/constants/layout';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchTransactions } from '@/store/slices/transaction.slice';
+import { fetchBudgets } from '@/store/slices/budget.slice';
 
 interface QuickAction {
   id: string;
@@ -38,6 +39,7 @@ export default function HomeScreen() {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { list: transactions } = useAppSelector((state) => state.transactions);
+  const { list: budgets } = useAppSelector((state) => state.budgets);
   const [income, setIncome] = useState(0);
   const [expense, setExpense] = useState(0);
   const [balance, setBalance] = useState(0);
@@ -45,6 +47,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       dispatch(fetchTransactions());
+      dispatch(fetchBudgets());
     }, [dispatch])
   );
 
@@ -150,20 +153,62 @@ export default function HomeScreen() {
         <View style={styles.recentSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Giao dịch gần đây</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/transactions')}>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/records')}>
               <Text style={styles.seeAllText}>Xem tất cả</Text>
             </TouchableOpacity>
           </View>
           
-          <Card style={styles.transactionCard}>
-            <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.emptyStateText}>Chưa có giao dịch nào</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Thêm giao dịch đầu tiên của bạn
-              </Text>
-            </View>
-          </Card>
+          {transactions.length === 0 ? (
+            <Card style={styles.transactionCard}>
+              <View style={styles.emptyState}>
+                <Ionicons name="receipt-outline" size={48} color={Colors.textMuted} />
+                <Text style={styles.emptyStateText}>Chưa có giao dịch nào</Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Thêm giao dịch đầu tiên của bạn
+                </Text>
+              </View>
+            </Card>
+          ) : (
+            <Card style={styles.transactionCard}>
+              {transactions.slice(0, 5).map((transaction, index) => (
+                <TouchableOpacity
+                  key={transaction.id}
+                  style={[
+                    styles.transactionItem,
+                    index !== Math.min(4, transactions.length - 1) && styles.transactionItemBorder
+                  ]}
+                >
+                  <View style={styles.transactionLeft}>
+                    <View style={[
+                      styles.transactionIcon,
+                      { backgroundColor: transaction.category?.color || Colors.primary }
+                    ]}>
+                      <Ionicons 
+                        name={(transaction.category?.icon || 'wallet') as any} 
+                        size={20} 
+                        color={Colors.textLight} 
+                      />
+                    </View>
+                    <View style={styles.transactionInfo}>
+                      <Text style={styles.transactionCategory}>
+                        {transaction.category?.name || 'Không có danh mục'}
+                      </Text>
+                      <Text style={styles.transactionDate}>
+                        {new Date(transaction.date).toLocaleDateString('vi-VN')}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[
+                    styles.transactionAmount,
+                    { color: transaction.type === 'INCOME' ? Colors.income : Colors.expense }
+                  ]}>
+                    {transaction.type === 'INCOME' ? '+' : '-'}
+                    {formatCurrency(transaction.amount)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </Card>
+          )}
         </View>
 
         {/* Budget Overview */}
@@ -175,15 +220,54 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           
-          <Card style={styles.budgetCard}>
-            <View style={styles.emptyState}>
-              <Ionicons name="pie-chart-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.emptyStateText}>Chưa có ngân sách</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Tạo ngân sách để quản lý chi tiêu
-              </Text>
-            </View>
-          </Card>
+          {budgets.length === 0 ? (
+            <Card style={styles.budgetCard}>
+              <View style={styles.emptyState}>
+                <Ionicons name="pie-chart-outline" size={48} color={Colors.textMuted} />
+                <Text style={styles.emptyStateText}>Chưa có ngân sách</Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Tạo ngân sách để quản lý chi tiêu
+                </Text>
+              </View>
+            </Card>
+          ) : (
+            budgets.slice(0, 3).map((budget) => {
+              const percentage = Math.min((budget.spent / budget.amount) * 100, 100);
+              const progressColor = percentage >= 90 ? Colors.error : percentage >= 70 ? Colors.warning : Colors.success;
+              
+              return (
+                <Card key={budget.id} style={styles.budgetItem}>
+                  <View style={styles.budgetHeader}>
+                    <View style={styles.budgetInfo}>
+                      <View style={[
+                        styles.budgetIconSmall,
+                        { backgroundColor: budget.category?.color || Colors.primary }
+                      ]}>
+                        <Ionicons 
+                          name={(budget.category?.icon || 'wallet') as any} 
+                          size={20} 
+                          color={Colors.textLight} 
+                        />
+                      </View>
+                      <Text style={styles.budgetName}>{budget.name}</Text>
+                    </View>
+                    <Text style={styles.budgetPercentage}>{percentage.toFixed(0)}%</Text>
+                  </View>
+                  <View style={styles.budgetProgressBar}>
+                    <View 
+                      style={[
+                        styles.budgetProgress, 
+                        { width: `${percentage}%`, backgroundColor: progressColor }
+                      ]} 
+                    />
+                  </View>
+                  <Text style={styles.budgetAmount}>
+                    {formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}
+                  </Text>
+                </Card>
+              );
+            })
+          )}
         </View>
       </ScrollView>
     </View>
@@ -344,7 +428,93 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   transactionCard: {
-    minHeight: 150,
+    padding: 0,
+  },
+  transactionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Layout.spacing.md,
+  },
+  transactionItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  transactionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  transactionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Layout.spacing.md,
+  },
+  transactionInfo: {
+    flex: 1,
+  },
+  transactionCategory: {
+    fontSize: Layout.fontSize.md,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  transactionDate: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  transactionAmount: {
+    fontSize: Layout.fontSize.md,
+    fontWeight: 'bold',
+  },
+  budgetItem: {
+    marginBottom: Layout.spacing.md,
+  },
+  budgetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Layout.spacing.sm,
+  },
+  budgetInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  budgetIconSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Layout.spacing.sm,
+  },
+  budgetName: {
+    fontSize: Layout.fontSize.md,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  budgetPercentage: {
+    fontSize: Layout.fontSize.md,
+    fontWeight: 'bold',
+    color: Colors.textSecondary,
+  },
+  budgetProgressBar: {
+    height: 6,
+    backgroundColor: Colors.border,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: Layout.spacing.xs,
+  },
+  budgetProgress: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  budgetAmount: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textSecondary,
   },
   budgetCard: {
     minHeight: 150,

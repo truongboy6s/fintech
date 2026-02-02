@@ -33,7 +33,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="transactions"
+        name="analytics"
         options={{
           title: 'Biến động',
           tabBarIcon: ({ color, size }) => (
@@ -66,6 +66,18 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="transactions"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="home"
+        options={{
+          href: null, // Hide from tab bar
         }}
       />
     </Tabs>

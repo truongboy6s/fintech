@@ -1,14 +1,61 @@
 import { apiClient } from './api';
-// import * as FileSystem from 'expo-file-system';
-// import * as Sharing from 'expo-sharing';
 
-export interface ReportData {
-  totalIncome: number;
-  totalExpense: number;
-  balance: number;
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as SecureStore from 'expo-secure-store';
+
+export interface MonthlyReport {
+  period: {
+    year: number;
+    month: number;
+    startDate: string;
+    endDate: string;
+  };
+  summary: {
+    totalIncome: number;
+    totalExpense: number;
+    balance: number;
+    transactionCount: number;
+  };
+  categoryBreakdown: CategoryBreakdown[];
   transactions: any[];
-  categories: any[];
-  period: string;
+}
+
+export interface CategoryBreakdown {
+  category: {
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+    type: string;
+  };
+  income: number;
+  expense: number;
+  transactionCount: number;
+}
+
+export interface CategoryReport {
+  category: {
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+    type: string;
+  };
+  summary: {
+    totalIncome: number;
+    totalExpense: number;
+    transactionCount: number;
+  };
+  transactions: any[];
+}
+
+export interface TrendReport {
+  year: number;
+  month: number;
+  income: number;
+  expense: number;
+  balance: number;
 }
 
 export interface ExportOptions {
@@ -19,9 +66,44 @@ export interface ExportOptions {
 }
 
 class ReportService {
-  async getReport(startDate: string, endDate: string): Promise<ReportData> {
+  async getMonthlyReport(year?: number, month?: number): Promise<MonthlyReport> {
     try {
-      return await apiClient.get<ReportData>('/reports', {
+      const params: any = {};
+      if (year) params.year = year;
+      if (month) params.month = month;
+      
+      return await apiClient.get<MonthlyReport>('/reports/monthly', { params });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể lấy báo cáo tháng');
+    }
+  }
+
+  async getCategoryReport(categoryId: string, startDate?: string, endDate?: string): Promise<CategoryReport> {
+    try {
+      const params: any = {};
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      
+      return await apiClient.get<CategoryReport>(`/reports/category/${categoryId}`, { params });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể lấy báo cáo danh mục');
+    }
+  }
+
+  async getTrendReport(months?: number): Promise<TrendReport[]> {
+    try {
+      const params: any = {};
+      if (months) params.months = months;
+      
+      return await apiClient.get<TrendReport[]>('/reports/trend', { params });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể lấy báo cáo xu hướng');
+    }
+  }
+
+  async getReport(startDate: string, endDate: string): Promise<any> {
+    try {
+      return await apiClient.get<any>('/reports', {
         params: { startDate, endDate },
       });
     } catch (error: any) {
@@ -29,49 +111,118 @@ class ReportService {
     }
   }
 
-  async exportPDF(options: ExportOptions): Promise<void> {
+  async exportPDF(options: ExportOptions): Promise<string> {
     try {
-      const response = await apiClient.post('/reports/export/pdf', options, {
-        responseType: 'blob',
+      // Get auth token
+      const token = await SecureStore.getItemAsync('authToken');
+      const API_URL = 'http://10.0.2.2:3000/api';
+      
+      const response = await fetch(`${API_URL}/reports/export/pdf`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(options),
+      });
+
+      if (!response.ok) {
+        throw new Error('Không thể xuất PDF');
+      }
+
+      // Get response as arrayBuffer
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Convert arrayBuffer to base64
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer)
+          .reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      
+      const fileUri = `${FileSystem.documentDirectory}report-${Date.now()}.pdf`;
+      
+      await FileSystem.writeAsStringAsync(fileUri, base64, {
+        encoding: 'base64' as FileSystem.EncodingType,
       });
       
-      // Save file và share (implementation tùy platform)
-      await this.saveAndShareFile(response, 'report.pdf', 'application/pdf');
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri);
+      }
+      
+      return fileUri;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Không thể xuất PDF');
+      throw new Error(error.message || 'Không thể xuất PDF');
     }
   }
 
-  async exportExcel(options: ExportOptions): Promise<void> {
+  async exportExcel(options: ExportOptions): Promise<string> {
     try {
-      const response = await apiClient.post('/reports/export/excel', options, {
-        responseType: 'blob',
+      // Get auth token
+      const token = await SecureStore.getItemAsync('authToken');
+      const API_URL = 'http://10.0.2.2:3000/api';
+      
+      const response = await fetch(`${API_URL}/reports/export/excel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(options),
+      });
+
+      if (!response.ok) {
+        throw new Error('Không thể xuất Excel');
+      }
+
+      // Get response as arrayBuffer
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Convert arrayBuffer to base64
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer)
+          .reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      
+      const fileUri = `${FileSystem.documentDirectory}report-${Date.now()}.xlsx`;
+      
+      await FileSystem.writeAsStringAsync(fileUri, base64, {
+        encoding: 'base64' as FileSystem.EncodingType,
       });
       
-      // Save file và share
-      await this.saveAndShareFile(response, 'report.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri);
+      }
+      
+      return fileUri;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Không thể xuất Excel');
+      throw new Error(error.message || 'Không thể xuất Excel');
     }
   }
 
-  private async saveAndShareFile(data: any, filename: string, mimeType: string): Promise<void> {
+  private async saveAndShareFile(data: any, filename: string, mimeType: string): Promise<string> {
     try {
-      // TODO: Implement file save and share functionality
-      // Sẽ implement sau khi có expo-file-system setup đúng
-      console.log('File will be saved as:', filename);
-      console.log('MIME type:', mimeType);
+      const fileUri = `${FileSystem.documentDirectory}${filename}`;
       
-      // Example implementation:
-      // const FileSystem = require('expo-file-system');
-      // const Sharing = require('expo-sharing');
-      // const fileUri = FileSystem.documentDirectory + filename;
-      // await FileSystem.writeAsStringAsync(fileUri, data, {
-      //   encoding: FileSystem.EncodingType.Base64,
-      // });
-      // if (await Sharing.isAvailableAsync()) {
-      //   await Sharing.shareAsync(fileUri);
-      // }
+      // Convert blob to base64
+      const reader = new FileReader();
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(data);
+      });
+      
+      await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+        encoding: 'base64' as FileSystem.EncodingType,
+      });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri);
+      }
+      
+      return fileUri;
     } catch (error) {
       console.error('Error saving/sharing file:', error);
       throw error;

@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as PDFDocument from 'pdfkit';
+import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class ReportsService {
@@ -217,5 +219,182 @@ export class ReportsService {
     );
 
     return breakdown.filter((item) => item.transactionCount > 0);
+  }
+
+  // Export PDF
+  async exportPDF(userId: string, startDate: Date, endDate: Date): Promise<Buffer> {
+    const [income, expense, transactions, categoryBreakdown] = await Promise.all([
+      this.prisma.transaction.aggregate({
+        where: {
+          userId,
+          type: 'INCOME',
+          date: { gte: startDate, lte: endDate },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.transaction.aggregate({
+        where: {
+          userId,
+          type: 'EXPENSE',
+          date: { gte: startDate, lte: endDate },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.transaction.findMany({
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate },
+        },
+        include: { category: true },
+        orderBy: { date: 'desc' },
+        take: 50,
+      }),
+      this.getCategoryBreakdown(userId, startDate, endDate),
+    ]);
+
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 50 });
+        const chunks: Buffer[] = [];
+
+        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        // Title
+        doc.fontSize(20).text('Bao cao tai chinh', { align: 'center' });
+        doc.moveDown();
+
+        // Period
+        doc.fontSize(12).text(`Tu ngay: ${startDate.toLocaleDateString('vi-VN')}`);
+        doc.text(`Den ngay: ${endDate.toLocaleDateString('vi-VN')}`);
+        doc.moveDown();
+
+        // Summary
+        doc.fontSize(16).text('Tong quan', { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(12);
+        doc.text(`Thu nhap: ${(income._sum.amount || 0).toLocaleString('vi-VN')} VND`);
+        doc.text(`Chi tieu: ${(expense._sum.amount || 0).toLocaleString('vi-VN')} VND`);
+        doc.text(`Can doi: ${((income._sum.amount || 0) - (expense._sum.amount || 0)).toLocaleString('vi-VN')} VND`);
+        doc.moveDown();
+
+        // Category Breakdown
+        if (categoryBreakdown.length > 0) {
+          doc.fontSize(16).text('Phan tich theo danh muc', { underline: true });
+          doc.moveDown(0.5);
+          doc.fontSize(10);
+          
+          categoryBreakdown.forEach((item) => {
+            doc.text(`${item.category.name}: ${item.expense.toLocaleString('vi-VN')} VND`);
+          });
+          doc.moveDown();
+        }
+
+        // Transactions
+        if (transactions.length > 0) {
+          doc.fontSize(16).text('Giao dich gan day', { underline: true });
+          doc.moveDown(0.5);
+          doc.fontSize(9);
+          
+          transactions.slice(0, 20).forEach((txn) => {
+            const date = new Date(txn.date).toLocaleDateString('vi-VN');
+            const type = txn.type === 'INCOME' ? 'Thu' : 'Chi';
+            doc.text(`${date} - ${type} - ${txn.category.name}: ${txn.amount.toLocaleString('vi-VN')} VND`);
+          });
+        }
+
+        doc.end();
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  // Export Excel
+  async exportExcel(userId: string, startDate: Date, endDate: Date): Promise<Buffer> {
+    const [income, expense, transactions, categoryBreakdown] = await Promise.all([
+      this.prisma.transaction.aggregate({
+        where: {
+          userId,
+          type: 'INCOME',
+          date: { gte: startDate, lte: endDate },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.transaction.aggregate({
+        where: {
+          userId,
+          type: 'EXPENSE',
+          date: { gte: startDate, lte: endDate },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.transaction.findMany({
+        where: {
+          userId,
+          date: { gte: startDate, lte: endDate },
+        },
+        include: { category: true },
+        orderBy: { date: 'desc' },
+      }),
+      this.getCategoryBreakdown(userId, startDate, endDate),
+    ]);
+
+    const workbook = new ExcelJS.Workbook();
+    
+    // Summary Sheet
+    const summarySheet = workbook.addWorksheet('Tong quan');
+    summarySheet.columns = [
+      { header: 'Muc', key: 'label', width: 30 },
+      { header: 'Gia tri', key: 'value', width: 20 },
+    ];
+    
+    summarySheet.addRows([
+      { label: 'Thoi gian', value: `${startDate.toLocaleDateString('vi-VN')} - ${endDate.toLocaleDateString('vi-VN')}` },
+      { label: 'Thu nhap', value: income._sum.amount || 0 },
+      { label: 'Chi tieu', value: expense._sum.amount || 0 },
+      { label: 'Can doi', value: (income._sum.amount || 0) - (expense._sum.amount || 0) },
+    ]);
+
+    // Category Sheet
+    const categorySheet = workbook.addWorksheet('Danh muc');
+    categorySheet.columns = [
+      { header: 'Danh muc', key: 'name', width: 30 },
+      { header: 'Thu nhap', key: 'income', width: 15 },
+      { header: 'Chi tieu', key: 'expense', width: 15 },
+      { header: 'So giao dich', key: 'count', width: 15 },
+    ];
+    
+    categorySheet.addRows(
+      categoryBreakdown.map((item) => ({
+        name: item.category.name,
+        income: item.income,
+        expense: item.expense,
+        count: item.transactionCount,
+      })),
+    );
+
+    // Transactions Sheet
+    const transactionSheet = workbook.addWorksheet('Giao dich');
+    transactionSheet.columns = [
+      { header: 'Ngay', key: 'date', width: 15 },
+      { header: 'Loai', key: 'type', width: 10 },
+      { header: 'Danh muc', key: 'category', width: 20 },
+      { header: 'So tien', key: 'amount', width: 15 },
+      { header: 'Ghi chu', key: 'description', width: 30 },
+    ];
+    
+    transactionSheet.addRows(
+      transactions.map((txn) => ({
+        date: new Date(txn.date).toLocaleDateString('vi-VN'),
+        type: txn.type === 'INCOME' ? 'Thu nhap' : 'Chi tieu',
+        category: txn.category.name,
+        amount: txn.amount,
+        description: txn.description || '',
+      })),
+    );
+
+    return workbook.xlsx.writeBuffer() as unknown as Promise<Buffer>;
   }
 }
