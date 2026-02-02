@@ -6,13 +6,18 @@ import {
   TouchableOpacity,
   StatusBar,
   FlatList,
-  Modal,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomButton, CustomInput } from '@/components/ui';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
+import { useAppDispatch } from '@/store/hooks';
+import { createCategory } from '@/store/slices/category.slice';
+import { CategoryType } from '@/services/category.service';
 
 const availableIcons = [
   'restaurant', 'car', 'cart', 'game-controller', 'medical', 'school',
@@ -21,20 +26,51 @@ const availableIcons = [
 ];
 
 const availableColors = [
-  Colors.actionRed, Colors.actionGreen, Colors.actionBlue, Colors.actionPurple,
-  Colors.actionYellow, '#EC4899', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316',
+  Colors.actionRed, 
+  Colors.actionGreen, 
+  Colors.actionBlue, 
+  Colors.actionPurple,
+  Colors.actionYellow, 
+  '#EC4899',  // Pink
+  '#06B6D4',  // Cyan
+  '#84CC16',  // Lime
+  '#F97316',  // Orange
+  '#6366F1',  // Indigo
 ];
 
 export default function AddCategoryScreen() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  
   const [categoryName, setCategoryName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('restaurant');
   const [selectedColor, setSelectedColor] = useState(Colors.actionRed);
+  const [categoryType, setCategoryType] = useState<CategoryType>(CategoryType.EXPENSE);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSave = () => {
-    if (!categoryName) return;
-    console.log({ categoryName, selectedIcon, selectedColor });
-    router.back();
+  const handleSave = async () => {
+    if (!categoryName.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập tên danh mục');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await dispatch(createCategory({
+        name: categoryName.trim(),
+        icon: selectedIcon,
+        color: selectedColor,
+        type: categoryType,
+      })).unwrap();
+      
+      Alert.alert('Thành công', 'Đã tạo danh mục mới', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Lỗi', error.message || 'Không thể tạo danh mục');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -50,7 +86,7 @@ export default function AddCategoryScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Preview */}
         <View style={styles.previewSection}>
           <Text style={styles.sectionTitle}>Xem trước</Text>
@@ -73,6 +109,41 @@ export default function AddCategoryScreen() {
             onChangeText={setCategoryName}
             icon="create-outline"
           />
+        </View>
+
+        {/* Category Type */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Loại danh mục</Text>
+          <View style={styles.typeContainer}>
+            <TouchableOpacity
+              style={[
+                styles.typeButton,
+                categoryType === CategoryType.EXPENSE && styles.typeButtonActive,
+              ]}
+              onPress={() => setCategoryType(CategoryType.EXPENSE)}
+            >
+              <Text style={[
+                styles.typeButtonText,
+                categoryType === CategoryType.EXPENSE && styles.typeButtonTextActive,
+              ]}>
+                Chi tiêu
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.typeButton,
+                categoryType === CategoryType.INCOME && styles.typeButtonActive,
+              ]}
+              onPress={() => setCategoryType(CategoryType.INCOME)}
+            >
+              <Text style={[
+                styles.typeButtonText,
+                categoryType === CategoryType.INCOME && styles.typeButtonTextActive,
+              ]}>
+                Thu nhập
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Icon Selection */}
@@ -127,15 +198,15 @@ export default function AddCategoryScreen() {
         {/* Save Button */}
         <View style={styles.footer}>
           <CustomButton
-            title="Lưu danh mục"
+            title={isLoading ? "Đang lưu..." : "Lưu danh mục"}
             onPress={handleSave}
             variant="primary"
             size="lg"
             fullWidth
-            disabled={!categoryName}
+            disabled={!categoryName.trim() || isLoading}
           />
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -164,7 +235,7 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 24,
   },
-  content: {
+  scrollView: {
     flex: 1,
   },
   previewSection: {
@@ -235,9 +306,36 @@ const styles = StyleSheet.create({
   colorItemActive: {
     borderColor: Colors.text,
   },
+  typeContainer: {
+    flexDirection: 'row',
+    gap: Layout.spacing.md,
+  },
+  typeButton: {
+    flex: 1,
+    paddingVertical: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.lg,
+    borderRadius: Layout.borderRadius.md,
+    backgroundColor: Colors.background,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: 'center',
+  },
+  typeButtonActive: {
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primary,
+  },
+  typeButtonText: {
+    fontSize: Layout.fontSize.md,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  typeButtonTextActive: {
+    color: Colors.primary,
+  },
   footer: {
     padding: Layout.spacing.lg,
     backgroundColor: Colors.backgroundLight,
-    marginTop: 'auto',
+    marginTop: Layout.spacing.lg,
+    marginBottom: Layout.spacing.xl,
   },
 });

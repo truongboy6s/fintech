@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,50 +8,24 @@ import {
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
 import { Card, CustomButton } from '@/components/ui';
 import { formatCurrency } from '@/utils/formatCurrency';
-
-interface Budget {
-  id: string;
-  name: string;
-  period: 'week' | 'month' | 'year';
-  amount: number;
-  spent: number;
-  category: string;
-  icon: string;
-  color: string;
-}
-
-// Mock data
-const mockBudgets: Budget[] = [
-  {
-    id: '1',
-    name: 'Ăn uống',
-    period: 'month',
-    amount: 5000000,
-    spent: 300000,
-    category: 'food',
-    icon: 'restaurant',
-    color: Colors.actionRed,
-  },
-  {
-    id: '2',
-    name: 'Di chuyển',
-    period: 'month',
-    amount: 2000000,
-    spent: 500000,
-    category: 'transport',
-    icon: 'car',
-    color: Colors.actionBlue,
-  },
-];
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchBudgets } from '@/store/slices/budget.slice';
 
 export default function BudgetsScreen() {
   const router = useRouter();
-  const [budgets] = useState<Budget[]>(mockBudgets);
+  const dispatch = useAppDispatch();
+  const { list: budgets, loading } = useAppSelector((state) => state.budgets);
+
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(fetchBudgets());
+    }, [dispatch])
+  );
 
   const calculatePercentage = (spent: number, total: number) => {
     return Math.min((spent / total) * 100, 100);
@@ -85,7 +59,7 @@ export default function BudgetsScreen() {
               </Text>
               <CustomButton
                 title="Tạo ngân sách"
-                onPress={() => router.push('/create-budget')}
+                onPress={() => router.push('/add-budget')}
                 variant="primary"
                 size="md"
                 icon="add-circle"
@@ -104,13 +78,13 @@ export default function BudgetsScreen() {
                 <Card key={budget.id} style={styles.budgetCard}>
                   <View style={styles.budgetHeader}>
                     <View style={styles.budgetInfo}>
-                      <View style={[styles.budgetIcon, { backgroundColor: budget.color }]}>
-                        <Ionicons name={budget.icon as any} size={24} color={Colors.textLight} />
+                      <View style={[styles.budgetIcon, { backgroundColor: budget.category?.color || Colors.primary }]}>
+                        <Ionicons name={(budget.category?.icon || 'wallet') as any} size={24} color={Colors.textLight} />
                       </View>
                       <View>
                         <Text style={styles.budgetName}>{budget.name}</Text>
                         <Text style={styles.budgetPeriod}>
-                          {budget.period === 'week' ? 'Tuần' : budget.period === 'month' ? 'Tháng' : 'Năm'}
+                          {budget.period === 'WEEK' ? 'Hàng tuần' : budget.period === 'MONTH' ? 'Hàng tháng' : 'Hàng năm'}
                         </Text>
                       </View>
                     </View>
@@ -154,7 +128,7 @@ export default function BudgetsScreen() {
             {/* Create New Budget Button */}
             <TouchableOpacity
               style={styles.createNewButton}
-              onPress={() => router.push('/create-budget')}
+              onPress={() => {/* TODO: Thêm trang tạo ngân sách */}}
             >
               <Ionicons name="add-circle" size={24} color={Colors.primary} />
               <Text style={styles.createNewText}>Tạo ngân sách mới</Text>

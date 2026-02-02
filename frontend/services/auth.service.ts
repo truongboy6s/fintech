@@ -18,7 +18,7 @@ export interface AuthResponse {
     email: string;
     name: string;
   };
-  token: string;
+  accessToken: string;
 }
 
 export interface User {
@@ -33,8 +33,8 @@ class AuthService {
       const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
       
       // Lưu token vào secure storage
-      if (response.token) {
-        await SecureStore.setItemAsync('authToken', response.token);
+      if (response.accessToken) {
+        await SecureStore.setItemAsync('authToken', response.accessToken);
       }
       
       return response;
@@ -48,8 +48,8 @@ class AuthService {
       const response = await apiClient.post<AuthResponse>('/auth/register', data);
       
       // Lưu token vào secure storage
-      if (response.token) {
-        await SecureStore.setItemAsync('authToken', response.token);
+      if (response.accessToken) {
+        await SecureStore.setItemAsync('authToken', response.accessToken);
       }
       
       return response;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BarChart } from 'react-native-chart-kit';
@@ -14,6 +15,9 @@ import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
 import { Card } from '@/components/ui';
 import { formatCurrency } from '@/utils/formatCurrency';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchCategories } from '@/store/slices/category.slice';
+import { CategoryType } from '@/services/category.service';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -33,24 +37,15 @@ const transactionTypes = [
   { label: 'Chênh lệch', value: 'difference' as TransactionType, color: Colors.primary },
 ];
 
-// Mock data
-const mockData = {
-  labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-  datasets: [{
-    data: [500000, 800000, 600000, 1200000, 900000, 1500000, 700000],
-  }],
-};
-
-const mockCategories = [
-  { id: '1', name: 'Ăn uống', amount: 2500000, icon: 'restaurant', color: Colors.actionRed },
-  { id: '2', name: 'Di chuyển', amount: 1200000, icon: 'car', color: Colors.actionBlue },
-  { id: '3', name: 'Mua sắm', amount: 3500000, icon: 'cart', color: Colors.actionPurple },
-  { id: '4', name: 'Giải trí', amount: 800000, icon: 'game-controller', color: Colors.actionYellow },
-];
-
 export default function TransactionsScreen() {
+  const dispatch = useAppDispatch();
+  const { expenseCategories, loading } = useAppSelector((state) => state.categories);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('week');
   const [selectedType, setSelectedType] = useState<TransactionType>('all');
+
+  useEffect(() => {
+    dispatch(fetchCategories(CategoryType.EXPENSE));
+  }, [dispatch]);
 
   return (
     <View style={styles.container}>
@@ -112,59 +107,50 @@ export default function TransactionsScreen() {
           ))}
         </View>
 
-        {/* Chart */}
-        <Card style={styles.chartCard}>
+        {/* Chart - Tạm thời ẩn do không có dữ liệu thực */}
+        {/* <Card style={styles.chartCard}>
           <Text style={styles.chartTitle}>Biểu đồ chi tiêu</Text>
-          <BarChart
-            data={mockData}
-            width={screenWidth - Layout.spacing.lg * 4}
-            height={220}
-            yAxisLabel=""
-            yAxisSuffix="k"
-            chartConfig={{
-              backgroundColor: Colors.backgroundLight,
-              backgroundGradientFrom: Colors.backgroundLight,
-              backgroundGradientTo: Colors.backgroundLight,
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(165, 0, 100, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-              style: {
-                borderRadius: Layout.borderRadius.md,
-              },
-              propsForBackgroundLines: {
-                strokeDasharray: '',
-                stroke: Colors.border,
-                strokeWidth: 1,
-              },
-              propsForLabels: {
-                fontSize: 12,
-              },
-            }}
-            style={styles.chart}
-            showValuesOnTopOfBars
-            fromZero
-          />
-        </Card>
+          <View style={styles.emptyChart}>
+            <Ionicons name="bar-chart-outline" size={48} color={Colors.textMuted} />
+            <Text style={styles.emptyText}>Dữ liệu biểu đồ đang được cập nhật</Text>
+          </View>
+        </Card> */}
 
         {/* Categories */}
         <View style={styles.categoriesSection}>
           <Text style={styles.sectionTitle}>Danh mục chi tiêu</Text>
-          {mockCategories.map((category) => (
-            <Card key={category.id} style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <View style={styles.categoryLeft}>
-                  <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
-                    <Ionicons name={category.icon as any} size={24} color={Colors.textLight} />
-                  </View>
-                  <Text style={styles.categoryName}>{category.name}</Text>
-                </View>
-                <View style={styles.categoryRight}>
-                  <Text style={styles.categoryAmount}>{formatCurrency(category.amount)}</Text>
-                  <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
-                </View>
+          {loading ? (
+            <Card style={styles.categoryCard}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+            </Card>
+          ) : expenseCategories.length === 0 ? (
+            <Card style={styles.categoryCard}>
+              <View style={styles.emptyState}>
+                <Ionicons name="folder-open-outline" size={48} color={Colors.textMuted} />
+                <Text style={styles.emptyText}>Chưa có danh mục nào</Text>
               </View>
             </Card>
-          ))}
+          ) : (
+            expenseCategories.map((category) => (
+              <Card key={category.id} style={styles.categoryCard}>
+                <View style={styles.categoryHeader}>
+                  <View style={styles.categoryLeft}>
+                    <View style={[styles.categoryIcon, { backgroundColor: category.color || Colors.actionRed }]}>
+                      <Ionicons 
+                        name={(category.icon as any) || 'pricetag'} 
+                        size={24} 
+                        color={Colors.textLight} 
+                      />
+                    </View>
+                    <Text style={styles.categoryName}>{category.name}</Text>
+                  </View>
+                  <View style={styles.categoryRight}>
+                    <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+                  </View>
+                </View>
+              </Card>
+            ))
+          )}
         </View>
       </ScrollView>
     </View>
@@ -303,5 +289,21 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.md,
     fontWeight: '600',
     color: Colors.text,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Layout.spacing.xl,
+  },
+  emptyText: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textMuted,
+    marginTop: Layout.spacing.sm,
+  },
+  emptyChart: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Layout.spacing.xl,
+    minHeight: 220,
   },
 });

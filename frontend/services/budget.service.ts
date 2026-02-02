@@ -5,7 +5,7 @@ export interface Budget {
   userId: string;
   name: string;
   amount: number;
-  period: 'week' | 'month' | 'year';
+  period: 'WEEK' | 'MONTH' | 'YEAR';
   categoryId?: string;
   startDate: string;
   endDate: string;
@@ -23,8 +23,8 @@ export interface Budget {
 export interface CreateBudgetDto {
   name: string;
   amount: number;
-  period: 'week' | 'month' | 'year';
-  categoryId?: string;
+  period: 'WEEK' | 'MONTH' | 'YEAR';
+  categoryId: string;
   startDate: string;
   endDate: string;
 }

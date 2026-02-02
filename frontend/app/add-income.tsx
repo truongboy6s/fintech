@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,10 @@ import {
   StatusBar,
   TextInput,
   FlatList,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomButton, CustomInput } from '@/components/ui';
@@ -17,21 +19,31 @@ import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { formatDate } from '@/utils/formatDate';
-
-const categories = [
-  { id: '1', name: 'Lương', icon: 'cash', color: Colors.actionGreen },
-  { id: '2', name: 'Đầu tư', icon: 'trending-up', color: Colors.actionBlue },
-  { id: '3', name: 'Kinh doanh', icon: 'briefcase', color: Colors.actionPurple },
-  { id: '4', name: 'Thưởng', icon: 'gift', color: Colors.actionYellow },
-  { id: '5', name: 'Khác', icon: 'ellipsis-horizontal', color: Colors.textMuted },
-];
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchCategories } from '@/store/slices/category.slice';
+import { createTransaction } from '@/store/slices/transaction.slice';
+import { CategoryType } from '@/services/category.service';
 
 export default function AddIncomeScreen() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { incomeCategories, loading } = useAppSelector((state) => state.categories);
+  
+  console.log('📊 Income categories in state:', incomeCategories);
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [date, setDate] = useState(new Date());
   const [note, setNote] = useState('');
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔄 Fetching INCOME categories...');
+      dispatch(fetchCategories(CategoryType.INCOME))
+        .unwrap()
+        .then((data) => console.log('✅ INCOME categories loaded:', data))
+        .catch((err) => console.error('❌ Failed to fetch INCOME categories:', err));
+    }, [dispatch])
+  );
 
   const handleAmountChange = (text: string) => {
     // Only allow numbers
@@ -44,10 +56,31 @@ export default function AddIncomeScreen() {
     return parseInt(value).toLocaleString('vi-VN');
   };
 
-  const handleSave = () => {
-    // Implement save logic
-    console.log({ amount, selectedCategory, date, note });
-    router.back();
+  const handleSave = async () => {
+    if (!amount || parseInt(amount) <= 0) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số tiền hợp lệ');
+      return;
+    }
+    if (!selectedCategory) {
+      Alert.alert('Lỗi', 'Vui lòng chọn danh mục');
+      return;
+    }
+
+    try {
+      await dispatch(createTransaction({
+        amount: parseInt(amount),
+        type: 'INCOME',
+        categoryId: selectedCategory,
+        description: note || undefined,
+        date: date.toISOString(),
+      })).unwrap();
+      Alert.alert('Thành công', 'Đã thêm thu nhập', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Lỗi', error.message || 'Không thể thêm thu nhập');
+      console.error('Create transaction error:', error);
+    }
   };
 
   return (
@@ -95,43 +128,49 @@ export default function AddIncomeScreen() {
             </TouchableOpacity>
           </View>
           
-          <FlatList
-            data={categories}
-            keyExtractor={(item) => item.id}
-            numColumns={4}
-            scrollEnabled={false}
-            columnWrapperStyle={styles.categoryRow}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.categoryItem,
-                  selectedCategory === item.id && styles.categoryItemActive,
-                ]}
-                onPress={() => setSelectedCategory(item.id)}
-              >
-                <View
+          {loading ? (
+            <ActivityIndicator size="large" color={Colors.income} />
+          ) : incomeCategories.length === 0 ? (
+            <Text style={styles.emptyCategoryText}>Chưa có danh mục thu nhập</Text>
+          ) : (
+            <FlatList
+              data={incomeCategories}
+              keyExtractor={(item) => item.id}
+              numColumns={4}
+              scrollEnabled={false}
+              columnWrapperStyle={styles.categoryRow}
+              renderItem={({ item }) => (
+                <TouchableOpacity
                   style={[
-                    styles.categoryIcon,
-                    { backgroundColor: selectedCategory === item.id ? Colors.income : item.color },
+                    styles.categoryItem,
+                    selectedCategory === item.id && styles.categoryItemActive,
                   ]}
+                  onPress={() => setSelectedCategory(item.id)}
                 >
-                  <Ionicons
-                    name={item.icon as any}
-                    size={24}
-                    color={Colors.textLight}
-                  />
-                </View>
-                <Text
-                  style={[
-                    styles.categoryText,
-                    selectedCategory === item.id && styles.categoryTextActive,
-                  ]}
-                >
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
+                  <View
+                    style={[
+                      styles.categoryIcon,
+                      { backgroundColor: selectedCategory === item.id ? Colors.income : (item.color || Colors.actionGreen) },
+                    ]}
+                  >
+                    <Ionicons
+                      name={(item.icon as any) || 'cash'}
+                      size={24}
+                      color={Colors.textLight}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      selectedCategory === item.id && styles.categoryTextActive,
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          )}
         </View>
 
         {/* Date Selection */}
@@ -287,6 +326,12 @@ const styles = StyleSheet.create({
   categoryTextActive: {
     fontWeight: '600',
     color: Colors.income,
+  },
+  emptyCategoryText: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    padding: Layout.spacing.lg,
   },
   dateButton: {
     flexDirection: 'row',

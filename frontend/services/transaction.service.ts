@@ -4,7 +4,7 @@ export interface Transaction {
   id: string;
   userId: string;
   amount: number;
-  type: 'income' | 'expense';
+  type: 'INCOME' | 'EXPENSE';
   categoryId: string;
   description?: string;
   date: string;
@@ -20,7 +20,7 @@ export interface Transaction {
 
 export interface CreateTransactionDto {
   amount: number;
-  type: 'income' | 'expense';
+  type: 'INCOME' | 'EXPENSE';
   categoryId: string;
   description?: string;
   date: string;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,32 +8,41 @@ import {
   StatusBar,
   TextInput,
   FlatList,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { CustomButton } from '@/components/ui';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
 import { formatDate } from '@/utils/formatDate';
-
-const categories = [
-  { id: '1', name: 'Ăn uống', icon: 'restaurant', color: Colors.actionRed },
-  { id: '2', name: 'Di chuyển', icon: 'car', color: Colors.actionBlue },
-  { id: '3', name: 'Mua sắm', icon: 'cart', color: Colors.actionPurple },
-  { id: '4', name: 'Giải trí', icon: 'game-controller', color: Colors.actionYellow },
-  { id: '5', name: 'Y tế', icon: 'medical', color: '#EF4444' },
-  { id: '6', name: 'Học tập', icon: 'school', color: '#3B82F6' },
-  { id: '7', name: 'Tiện ích', icon: 'flash', color: '#F59E0B' },
-  { id: '8', name: 'Khác', icon: 'ellipsis-horizontal', color: Colors.textMuted },
-];
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchCategories } from '@/store/slices/category.slice';
+import { createTransaction } from '@/store/slices/transaction.slice';
+import { CategoryType } from '@/services/category.service';
 
 export default function AddExpenseScreen() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { expenseCategories, loading } = useAppSelector((state) => state.categories);
+  
+  console.log('📊 Expense categories in state:', expenseCategories);
   const [amount, setAmount] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [date, setDate] = useState(new Date());
   const [note, setNote] = useState('');
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔄 Fetching EXPENSE categories...');
+      dispatch(fetchCategories(CategoryType.EXPENSE))
+        .unwrap()
+        .then((data) => console.log('✅ EXPENSE categories loaded:', data))
+        .catch((err) => console.error('❌ Failed to fetch EXPENSE categories:', err));
+    }, [dispatch])
+  );
 
   const handleAmountChange = (text: string) => {
     const cleaned = text.replace(/[^0-9]/g, '');
@@ -45,9 +54,31 @@ export default function AddExpenseScreen() {
     return parseInt(value).toLocaleString('vi-VN');
   };
 
-  const handleSave = () => {
-    console.log({ amount, selectedCategory, date, note });
-    router.back();
+  const handleSave = async () => {
+    if (!amount || parseInt(amount) <= 0) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số tiền hợp lệ');
+      return;
+    }
+    if (!selectedCategory) {
+      Alert.alert('Lỗi', 'Vui lòng chọn danh mục');
+      return;
+    }
+
+    try {
+      await dispatch(createTransaction({
+        amount: parseInt(amount),
+        type: 'EXPENSE',
+        categoryId: selectedCategory,
+        description: note || undefined,
+        date: date.toISOString(),
+      })).unwrap();
+      Alert.alert('Thành công', 'Đã thêm chi tiêu', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Lỗi', error.message || 'Không thể thêm chi tiêu');
+      console.error('Create transaction error:', error);
+    }
   };
 
   return (
@@ -92,43 +123,49 @@ export default function AddExpenseScreen() {
             </TouchableOpacity>
           </View>
           
-          <FlatList
-            data={categories}
-            keyExtractor={(item) => item.id}
-            numColumns={4}
-            scrollEnabled={false}
-            columnWrapperStyle={styles.categoryRow}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.categoryItem,
-                  selectedCategory === item.id && styles.categoryItemActive,
-                ]}
-                onPress={() => setSelectedCategory(item.id)}
-              >
-                <View
+          {loading ? (
+            <ActivityIndicator size="large" color={Colors.expense} />
+          ) : expenseCategories.length === 0 ? (
+            <Text style={styles.emptyCategoryText}>Chưa có danh mục chi tiêu</Text>
+          ) : (
+            <FlatList
+              data={expenseCategories}
+              keyExtractor={(item) => item.id}
+              numColumns={4}
+              scrollEnabled={false}
+              columnWrapperStyle={styles.categoryRow}
+              renderItem={({ item }) => (
+                <TouchableOpacity
                   style={[
-                    styles.categoryIcon,
-                    { backgroundColor: selectedCategory === item.id ? Colors.expense : item.color },
+                    styles.categoryItem,
+                    selectedCategory === item.id && styles.categoryItemActive,
                   ]}
+                  onPress={() => setSelectedCategory(item.id)}
                 >
-                  <Ionicons
-                    name={item.icon as any}
-                    size={24}
-                    color={Colors.textLight}
-                  />
-                </View>
-                <Text
-                  style={[
-                    styles.categoryText,
-                    selectedCategory === item.id && styles.categoryTextActive,
-                  ]}
-                >
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
+                  <View
+                    style={[
+                      styles.categoryIcon,
+                      { backgroundColor: selectedCategory === item.id ? Colors.expense : (item.color || Colors.actionRed) },
+                    ]}
+                  >
+                    <Ionicons
+                      name={(item.icon as any) || 'pricetag'}
+                      size={24}
+                      color={Colors.textLight}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      selectedCategory === item.id && styles.categoryTextActive,
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          )}
         </View>
 
         <View style={styles.section}>
@@ -281,6 +318,12 @@ const styles = StyleSheet.create({
   categoryTextActive: {
     fontWeight: '600',
     color: Colors.expense,
+  },
+  emptyCategoryText: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    padding: Layout.spacing.lg,
   },
   dateButton: {
     flexDirection: 'row',

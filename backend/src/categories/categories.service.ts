@@ -37,13 +37,18 @@ export class CategoriesService {
   }
 
   async findAll(userId: string, type?: string) {
+    console.log('🔍 [CategoriesService.findAll] userId:', userId);
+    console.log('🔍 [CategoriesService.findAll] type:', type);
+    
     const where: any = { userId };
 
     if (type) {
       where.type = type;
     }
 
-    return this.prisma.category.findMany({
+    console.log('🔍 [CategoriesService.findAll] where:', JSON.stringify(where));
+    
+    const categories = await this.prisma.category.findMany({
       where,
       include: {
         parent: true,
@@ -57,6 +62,9 @@ export class CategoriesService {
       },
       orderBy: { createdAt: 'desc' },
     });
+    
+    console.log('✅ [CategoriesService.findAll] Found', categories.length, 'categories');
+    return categories;
   }
 
   async findOne(id: string, userId: string) {

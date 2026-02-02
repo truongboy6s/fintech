@@ -56,9 +56,15 @@ export default function LoginScreen() {
     try {
       await login(email, password);
       router.replace('/(tabs)');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      setErrors({ ...errors, password: 'Email hoặc mật khẩu không đúng' });
+      const errorMessage = error.message || 'Đăng nhập thất bại';
+      
+      if (errorMessage.includes('Invalid credentials') || errorMessage.includes('không đúng')) {
+        setErrors({ ...errors, password: 'Email hoặc mật khẩu không đúng' });
+      } else {
+        setErrors({ ...errors, password: errorMessage });
+      }
     } finally {
       setLoading(false);
     }

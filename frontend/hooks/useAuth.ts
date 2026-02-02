@@ -1,12 +1,11 @@
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { loginSuccess, logout as logoutAction } from '@/store/slices/auth.slice';
 import { authService, LoginRequest, RegisterRequest } from '@/services/auth.service';
 import { useState } from 'react';
 
 export const useAuth = () => {
-  const dispatch = useDispatch();
-  const { user, token, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const dispatch = useAppDispatch();
+  const { user, token, isAuthenticated } = useAppSelector((state) => state.auth);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +18,7 @@ export const useAuth = () => {
       
       dispatch(loginSuccess({
         user: response.user,
-        token: response.token,
+        token: response.accessToken,
       }));
       
       return response;
@@ -40,7 +39,7 @@ export const useAuth = () => {
       
       dispatch(loginSuccess({
         user: response.user,
-        token: response.token,
+        token: response.accessToken,
       }));
       
       return response;

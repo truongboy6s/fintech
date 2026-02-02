@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,13 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Card } from '@/components/ui';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
 import { formatCurrency } from '@/utils/formatCurrency';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchTransactions } from '@/store/slices/transaction.slice';
 
 interface QuickAction {
   id: string;
@@ -33,11 +35,35 @@ const quickActions: QuickAction[] = [
 
 export default function HomeScreen() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+  const { list: transactions } = useAppSelector((state) => state.transactions);
+  const [income, setIncome] = useState(0);
+  const [expense, setExpense] = useState(0);
+  const [balance, setBalance] = useState(0);
 
-  // Mock data - sẽ được thay thế bằng dữ liệu thực từ API
-  const balance = 25000000;
-  const income = 30000000;
-  const expense = 5000000;
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(fetchTransactions());
+    }, [dispatch])
+  );
+
+  useEffect(() => {
+    let totalIncome = 0;
+    let totalExpense = 0;
+    
+    transactions.forEach(t => {
+      if (t.type === 'INCOME') {
+        totalIncome += t.amount;
+      } else {
+        totalExpense += t.amount;
+      }
+    });
+    
+    setIncome(totalIncome);
+    setExpense(totalExpense);
+    setBalance(totalIncome - totalExpense);
+  }, [transactions]);
 
   const handleQuickAction = (route: string) => {
     router.push(route as any);
@@ -59,7 +85,7 @@ export default function HomeScreen() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.greeting}>Xin chào! 👋</Text>
-              <Text style={styles.userName}>Người dùng</Text>
+              <Text style={styles.userName}>{user?.name || 'Người dùng'}</Text>
             </View>
             <TouchableOpacity style={styles.notificationButton}>
               <Ionicons name="notifications-outline" size={24} color={Colors.textLight} />

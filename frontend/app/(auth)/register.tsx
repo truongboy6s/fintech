@@ -80,9 +80,16 @@ export default function RegisterScreen() {
     try {
       await register(formData.name, formData.email, formData.password);
       router.replace('/(tabs)');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Register error:', error);
-      setErrors({ ...errors, email: 'Email đã được sử dụng' });
+      const errorMessage = error.message || 'Đăng ký thất bại';
+      
+      // Hiển thị lỗi theo field tương ứng
+      if (errorMessage.includes('Email already exists') || errorMessage.includes('Email đã được sử dụng')) {
+        setErrors({ ...errors, email: 'Email đã được sử dụng. Vui lòng dùng email khác hoặc đăng nhập.' });
+      } else {
+        setErrors({ ...errors, email: errorMessage });
+      }
     } finally {
       setLoading(false);
     }
