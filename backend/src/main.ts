@@ -6,7 +6,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS
-  app.enableCors();
+  app.enableCors({
+    origin: '*',
+  });
 
   // Enable validation pipes
   app.useGlobalPipes(
@@ -21,7 +23,12 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  console.log(`🚀 Application is running on: http://localhost:${port}/api`);
+
+  // 🔥 QUAN TRỌNG: bind 0.0.0.0
+  await app.listen(port, '0.0.0.0');
+
+  console.log(`🚀 Server running at:`);
+  console.log(`   ➜ Local:   http://localhost:${port}/api`);
+  console.log(`   ➜ Network: http://192.168.1.103:${port}/api`);
 }
 bootstrap();

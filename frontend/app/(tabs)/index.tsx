@@ -13,7 +13,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Card } from '@/components/ui';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
-import { formatCurrency } from '@/utils/formatCurrency';
+import { formatCurrency, formatCurrencyShort } from '@/utils/formatCurrency';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchTransactions } from '@/store/slices/transaction.slice';
 import { fetchBudgets } from '@/store/slices/budget.slice';
@@ -261,8 +261,8 @@ export default function HomeScreen() {
                       ]} 
                     />
                   </View>
-                  <Text style={styles.budgetAmount}>
-                    {formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}
+                  <Text style={styles.budgetAmount} numberOfLines={1}>
+                    {formatCurrencyShort(budget.spent)} / {formatCurrencyShort(budget.amount)}
                   </Text>
                 </Card>
               );
@@ -482,6 +482,8 @@ const styles = StyleSheet.create({
   budgetInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: Layout.spacing.sm,
   },
   budgetIconSmall: {
     width: 32,
@@ -495,6 +497,7 @@ const styles = StyleSheet.create({
     fontSize: Layout.fontSize.md,
     fontWeight: '600',
     color: Colors.text,
+    flexShrink: 1,
   },
   budgetPercentage: {
     fontSize: Layout.fontSize.md,
@@ -513,7 +516,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   budgetAmount: {
-    fontSize: Layout.fontSize.sm,
+    fontSize: Layout.fontSize.xs,
     color: Colors.textSecondary,
   },
   budgetCard: {

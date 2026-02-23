@@ -12,7 +12,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
 import { Card, CustomButton } from '@/components/ui';
-import { formatCurrency } from '@/utils/formatCurrency';
+import { formatCurrency, formatCurrencyShort } from '@/utils/formatCurrency';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchBudgets } from '@/store/slices/budget.slice';
 
@@ -96,10 +96,10 @@ export default function BudgetsScreen() {
                   <View style={styles.budgetProgress}>
                     <View style={styles.progressHeader}>
                       <Text style={styles.spentText}>
-                        {formatCurrency(budget.spent)}
+                        {formatCurrencyShort(budget.spent)}
                       </Text>
                       <Text style={styles.totalText}>
-                        / {formatCurrency(budget.amount)}
+                        / {formatCurrencyShort(budget.amount)}
                       </Text>
                     </View>
                     
@@ -113,12 +113,14 @@ export default function BudgetsScreen() {
                     </View>
 
                     <View style={styles.progressFooter}>
-                      <Text style={[styles.percentageText, { color: progressColor }]}>
-                        {percentage.toFixed(0)}%
-                      </Text>
-                      <Text style={styles.remainingText}>
-                        Còn lại: {formatCurrency(budget.amount - budget.spent)}
-                      </Text>
+                      <View style={styles.progressStats}>
+                        <Text style={[styles.percentageText, { color: progressColor }]}>
+                          {percentage.toFixed(0)}%
+                        </Text>
+                        <Text style={styles.remainingText}>
+                          Còn lại: {formatCurrencyShort(budget.amount - budget.spent)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </Card>
@@ -128,7 +130,7 @@ export default function BudgetsScreen() {
             {/* Create New Budget Button */}
             <TouchableOpacity
               style={styles.createNewButton}
-              onPress={() => {/* TODO: Thêm trang tạo ngân sách */}}
+              onPress={() => router.push('/add-budget')}
             >
               <Ionicons name="add-circle" size={24} color={Colors.primary} />
               <Text style={styles.createNewText}>Tạo ngân sách mới</Text>
@@ -227,20 +229,24 @@ const styles = StyleSheet.create({
   },
   budgetProgress: {
     gap: Layout.spacing.sm,
+    flex: 1,
   },
   progressHeader: {
     flexDirection: 'row',
     alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: 4,
   },
   spentText: {
-    fontSize: Layout.fontSize.xl,
+    fontSize: Layout.fontSize.lg,
     fontWeight: 'bold',
     color: Colors.text,
+    flexShrink: 0,
   },
   totalText: {
-    fontSize: Layout.fontSize.md,
+    fontSize: Layout.fontSize.sm,
     color: Colors.textMuted,
-    marginLeft: Layout.spacing.xs,
+    flexShrink: 1,
   },
   progressBarContainer: {
     height: 8,
@@ -253,17 +259,24 @@ const styles = StyleSheet.create({
     borderRadius: Layout.borderRadius.full,
   },
   progressFooter: {
+    marginTop: 2,
+  },
+  progressStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
   },
   percentageText: {
-    fontSize: Layout.fontSize.sm,
+    fontSize: Layout.fontSize.xs,
     fontWeight: '600',
+    flexShrink: 0,
   },
   remainingText: {
-    fontSize: Layout.fontSize.sm,
+    fontSize: Layout.fontSize.xs,
     color: Colors.textMuted,
+    flexShrink: 0,
+    textAlign: 'right',
   },
   createNewButton: {
     flexDirection: 'row',

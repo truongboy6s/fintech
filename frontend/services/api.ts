@@ -2,23 +2,34 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-// API Base URL - có thể thay đổi IP này theo máy của bạn
-// Để lấy IP máy: chạy ipconfig (Windows) hoặc ifconfig (Mac/Linux)
+/**
+ * ================================
+ * DEV API URL CONFIG
+ * ================================
+ * Android Emulator  -> 10.0.2.2
+ * iOS Simulator     -> localhost
+ * Physical Device   -> IP máy tính (192.168.1.103)
+ */
 
-// Uncomment dòng này nếu dùng thiết bị thật (physical device)
-// const DEV_API_URL = 'http://10.50.136.239:3000/api';
+const getDevApiUrl = () => {
+  // Ưu tiên lấy từ environment variable
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  
+  // iOS Simulator luôn dùng localhost
+  if (Platform.OS === 'ios') {
+    return 'http://localhost:3000/api';
+  }
+  
+  // Android: mặc định dùng IP thật (cho cả physical device)
+  // Nếu dùng emulator, tạo .env để override
+  return 'http://192.168.1.103:3000/api';
+};
 
-// Dùng cho emulator/simulator
-const DEV_API_URL = Platform.select({
-  // Android Emulator: 10.0.2.2 maps to host's localhost
-  android: 'http://10.0.2.2:3000/api',
-  // iOS Simulator: localhost works
-  ios: 'http://localhost:3000/api',
-  // Web: localhost
-  default: 'http://localhost:3000/api',
-});
-
-const API_BASE_URL = __DEV__ ? DEV_API_URL : 'https://your-production-api.com/api';
+const API_BASE_URL = __DEV__
+  ? getDevApiUrl()
+  : 'https://your-production-api.com/api';
 
 console.log('🌐 API_BASE_URL:', API_BASE_URL);
 
@@ -38,34 +49,42 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor - thêm token vào header
+    /**
+     * ================================
+     * REQUEST INTERCEPTOR
+     * ================================
+     */
     this.client.interceptors.request.use(
       async (config) => {
         try {
           const token = await SecureStore.getItemAsync('authToken');
-          console.log('🔑 Token from SecureStore:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+
+          console.log(
+            '🔑 Token:',
+            token ? `${token.substring(0, 20)}...` : 'NO TOKEN'
+          );
+
           if (token) {
             config.headers.Authorization = `Bearer ${token}`;
-            console.log('✅ Authorization header added');
-          } else {
-            console.log('⚠️ No token found in SecureStore');
           }
         } catch (error) {
           console.error('❌ Error getting token:', error);
         }
+
         return config;
       },
-      (error) => {
-        return Promise.reject(error);
-      }
+      (error) => Promise.reject(error)
     );
 
-    // Response interceptor - xử lý lỗi chung
+    /**
+     * ================================
+     * RESPONSE INTERCEPTOR
+     * ================================
+     */
     this.client.interceptors.response.use(
       (response) => response,
       async (error) => {
-        // Log chi tiết lỗi để debug
-        console.error('API Error:', {
+        console.error('🚨 API Error:', {
           url: error.config?.url,
           method: error.config?.method,
           status: error.response?.status,
@@ -73,34 +92,63 @@ class ApiClient {
           message: error.message,
         });
 
+        // Nếu token hết hạn
         if (error.response?.status === 401) {
-          // Token expired hoặc invalid
           await SecureStore.deleteItemAsync('authToken');
-          // Có thể dispatch logout action ở đây
         }
+
         return Promise.reject(error);
       }
     );
   }
 
-  // Generic request methods
+  /**
+   * ================================
+   * GENERIC METHODS
+   * ================================
+   */
+
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.get(url, config);
     return response.data;
   }
 
-  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.client.post(url, data, config);
+  async post<T>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.post(
+      url,
+      data,
+      config
+    );
     return response.data;
   }
 
-  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.client.put(url, data, config);
+  async put<T>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.put(
+      url,
+      data,
+      config
+    );
     return response.data;
   }
 
-  async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response: AxiosResponse<T> = await this.client.patch(url, data, config);
+  async patch<T>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.patch(
+      url,
+      data,
+      config
+    );
     return response.data;
   }
 
