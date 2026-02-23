@@ -7,8 +7,6 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
-  Modal,
-  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { BarChart } from 'react-native-chart-kit';
@@ -18,7 +16,6 @@ import { Layout } from '@/constants/layout';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchMonthlyReport, fetchTrendReport } from '@/store/slices/report.slice';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { reportService } from '@/services/report.service';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -31,8 +28,6 @@ export default function AnalyticsScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('month');
   const [selectedView, setSelectedView] = useState<ViewType>('balance');
   const [showComparison, setShowComparison] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -115,29 +110,6 @@ export default function AnalyticsScreen() {
     }
   };
 
-  const handleExport = async (format: 'pdf' | 'excel') => {
-    try {
-      setIsExporting(true);
-      setShowExportModal(false);
-      
-      const currentDate = new Date();
-      const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString();
-      const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString();
-      
-      if (format === 'pdf') {
-        await reportService.exportPDF({ format, startDate, endDate });
-        Alert.alert('Thành công', 'Đã xuất báo cáo PDF');
-      } else {
-        await reportService.exportExcel({ format, startDate, endDate });
-        Alert.alert('Thành công', 'Đã xuất báo cáo Excel');
-      }
-    } catch (error: any) {
-      Alert.alert('Lỗi', error.message || 'Không thể xuất báo cáo');
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -146,17 +118,7 @@ export default function AnalyticsScreen() {
           <Ionicons name="chevron-back" size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Biến động thu chi</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={styles.iconButton}
-            onPress={() => setShowExportModal(true)}
-          >
-            <Ionicons name="download-outline" size={24} color={Colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="home-outline" size={24} color={Colors.text} />
-          </TouchableOpacity>
-        </View>
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView style={styles.content}>
@@ -398,72 +360,6 @@ export default function AnalyticsScreen() {
           </View>
         )}
       </ScrollView>
-
-      {/* Export Modal */}
-      <Modal
-        visible={showExportModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowExportModal(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowExportModal(false)}
-        >
-          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-            <Text style={styles.modalTitle}>Xuất báo cáo</Text>
-            <Text style={styles.modalSubtitle}>Chọn định dạng file</Text>
-            
-            <TouchableOpacity
-              style={styles.exportOption}
-              onPress={() => handleExport('pdf')}
-              disabled={isExporting}
-            >
-              <View style={styles.exportOptionIcon}>
-                <Ionicons name="document-text" size={24} color={Colors.error} />
-              </View>
-              <View style={styles.exportOptionText}>
-                <Text style={styles.exportOptionTitle}>Xuất PDF</Text>
-                <Text style={styles.exportOptionSubtitle}>Định dạng tài liệu</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.exportOption}
-              onPress={() => handleExport('excel')}
-              disabled={isExporting}
-            >
-              <View style={[styles.exportOptionIcon, { backgroundColor: Colors.success + '20' }]}>
-                <Ionicons name="grid" size={24} color={Colors.success} />
-              </View>
-              <View style={styles.exportOptionText}>
-                <Text style={styles.exportOptionTitle}>Xuất Excel</Text>
-                <Text style={styles.exportOptionSubtitle}>Bảng tính</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalCancelButton}
-              onPress={() => setShowExportModal(false)}
-            >
-              <Text style={styles.modalCancelText}>Hủy</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Loading Overlay */}
-      {isExporting && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={styles.loadingText}>Đang xuất báo cáo...</Text>
-          </View>
-        </View>
-      )}
     </View>
   );
 }
@@ -494,13 +390,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     marginRight: 40,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    padding: 4,
   },
   content: {
     flex: 1,

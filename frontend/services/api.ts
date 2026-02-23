@@ -33,6 +33,9 @@ const API_BASE_URL = __DEV__
 
 console.log('🌐 API_BASE_URL:', API_BASE_URL);
 
+// Export for use in other services
+export const getApiBaseUrl = () => API_BASE_URL;
+
 class ApiClient {
   private client: AxiosInstance;
 

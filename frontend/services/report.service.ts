@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, getApiBaseUrl } from './api';
 
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -115,7 +115,7 @@ class ReportService {
     try {
       // Get auth token
       const token = await SecureStore.getItemAsync('authToken');
-      const API_URL = 'http://10.0.2.2:3000/api';
+      const API_URL = getApiBaseUrl();
       
       const response = await fetch(`${API_URL}/reports/export/pdf`, {
         method: 'POST',
@@ -159,7 +159,7 @@ class ReportService {
     try {
       // Get auth token
       const token = await SecureStore.getItemAsync('authToken');
-      const API_URL = 'http://10.0.2.2:3000/api';
+      const API_URL = getApiBaseUrl();
       
       const response = await fetch(`${API_URL}/reports/export/excel`, {
         method: 'POST',
