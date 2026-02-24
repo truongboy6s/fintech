@@ -12,23 +12,22 @@ import { Platform } from 'react-native';
  */
 
 const getApiUrl = () => {
-  // Ưu tiên lấy từ environment variable (cho cả dev và production)
+  // 1️⃣ Nếu có ENV (ưu tiên cao nhất)
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  
-  // Production: dùng local IP cho testing
-  // Thay đổi thành domain thật khi deploy lên store
+
+  // 2️⃣ Production build (APK / Store)
   if (!__DEV__) {
-    return 'http://192.168.1.103:3000/api'; // IP máy tính cho build APK test
+    return 'https://fintech-ueb5.onrender.com/api';
   }
-  
-  // Development: iOS Simulator luôn dùng localhost
+
+  // 3️⃣ Development mode
   if (Platform.OS === 'ios') {
     return 'http://localhost:3000/api';
   }
-  
-  // Development: Android mặc định dùng IP thật
+
+  // Android dev dùng IP máy tính
   return 'http://192.168.1.103:3000/api';
 };
 
