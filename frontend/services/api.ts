@@ -11,25 +11,28 @@ import { Platform } from 'react-native';
  * Physical Device   -> IP máy tính (192.168.1.103)
  */
 
-const getDevApiUrl = () => {
-  // Ưu tiên lấy từ environment variable
+const getApiUrl = () => {
+  // Ưu tiên lấy từ environment variable (cho cả dev và production)
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
   
-  // iOS Simulator luôn dùng localhost
+  // Production: dùng local IP cho testing
+  // Thay đổi thành domain thật khi deploy lên store
+  if (!__DEV__) {
+    return 'http://192.168.1.103:3000/api'; // IP máy tính cho build APK test
+  }
+  
+  // Development: iOS Simulator luôn dùng localhost
   if (Platform.OS === 'ios') {
     return 'http://localhost:3000/api';
   }
   
-  // Android: mặc định dùng IP thật (cho cả physical device)
-  // Nếu dùng emulator, tạo .env để override
+  // Development: Android mặc định dùng IP thật
   return 'http://192.168.1.103:3000/api';
 };
 
-const API_BASE_URL = __DEV__
-  ? getDevApiUrl()
-  : 'https://your-production-api.com/api';
+const API_BASE_URL = getApiUrl();
 
 console.log('🌐 API_BASE_URL:', API_BASE_URL);
 
