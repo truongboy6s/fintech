@@ -134,19 +134,28 @@ export class ReportsService {
     return trends;
   }
 
-  // Báo cáo xu hướng theo tuần
-  async getWeeklyTrendReport(userId: string, weeks: number = 8) {
+  // Báo cáo xu hướng theo tuần (7 ngày từ Thứ 2 - Chủ Nhật)
+  async getWeeklyTrendReport(userId: string) {
     const trends = [];
     const now = new Date();
+    
+    // Tìm ngày thứ 2 của tuần hiện tại
+    const currentDay = now.getDay(); // 0 = CN, 1 = T2, ..., 6 = T7
+    const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1; // Nếu CN thì lùi 6 ngày
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - daysFromMonday);
+    monday.setHours(0, 0, 0, 0);
 
-    for (let i = weeks - 1; i >= 0; i--) {
-      const endDate = new Date(now);
-      endDate.setDate(endDate.getDate() - (i * 7));
-      endDate.setHours(23, 59, 59, 999);
+    // Lấy dữ liệu cho 7 ngày (T2 -> CN)
+    for (let i = 0; i < 7; i++) {
+      const dayDate = new Date(monday);
+      dayDate.setDate(monday.getDate() + i);
       
-      const startDate = new Date(endDate);
-      startDate.setDate(startDate.getDate() - 6);
+      const startDate = new Date(dayDate);
       startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(dayDate);
+      endDate.setHours(23, 59, 59, 999);
 
       const [income, expense] = await Promise.all([
         this.prisma.transaction.aggregate({
@@ -167,21 +176,24 @@ export class ReportsService {
         }),
       ]);
 
+      // dayOfWeek: 1=T2, 2=T3, 3=T4, 4=T5, 5=T6, 6=T7, 7=CN
+      const dayOfWeek = i + 1; // i = 0-6, dayOfWeek = 1-7
+      
       trends.push({
-        weekNumber: weeks - i,
-        startDate,
-        endDate,
+        dayOfWeek: dayOfWeek,
+        date: dayDate.toISOString().split('T')[0],
         income: income._sum.amount || 0,
         expense: expense._sum.amount || 0,
         balance: (income._sum.amount || 0) - (expense._sum.amount || 0),
       });
     }
 
-    return trends;
+    // Sắp xếp theo thứ tự ngày để đảm bảo T2->CN
+    return trends.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
   }
 
-  // Báo cáo xu hướng theo năm
-  async getYearlyTrendReport(userId: string, years: number = 3) {
+  // Báo cáo xu hướng theo năm (5 năm gần nhất)
+  async getYearlyTrendReport(userId: string, years: number = 5) {
     const trends = [];
     const now = new Date();
 

@@ -47,8 +47,8 @@ export const fetchTrendReport = createAsyncThunk(
 
 export const fetchWeeklyTrendReport = createAsyncThunk(
   'report/fetchWeeklyTrendReport',
-  async (weeks?: number) => {
-    return await reportService.getWeeklyTrendReport(weeks);
+  async () => {
+    return await reportService.getWeeklyTrendReport();
   }
 );
 

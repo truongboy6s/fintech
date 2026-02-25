@@ -37,14 +37,13 @@ export class ReportsController {
   }
 
   @Get('trend/weekly')
-  getWeeklyTrendReport(@Request() req, @Query('weeks') weeks?: string) {
-    const weeksNum = weeks ? parseInt(weeks) : 8;
-    return this.reportsService.getWeeklyTrendReport(req.user.userId, weeksNum);
+  getWeeklyTrendReport(@Request() req) {
+    return this.reportsService.getWeeklyTrendReport(req.user.userId);
   }
 
   @Get('trend/yearly')
   getYearlyTrendReport(@Request() req, @Query('years') years?: string) {
-    const yearsNum = years ? parseInt(years) : 3;
+    const yearsNum = years ? parseInt(years) : 5;
     return this.reportsService.getYearlyTrendReport(req.user.userId, yearsNum);
   }
 

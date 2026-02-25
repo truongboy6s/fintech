@@ -37,9 +37,8 @@ export default function AnalyticsScreen() {
         month: currentDate.getMonth() + 1 
       }));
       dispatch(fetchTrendReport(6));
-      // Tạm thời không gọi weekly/yearly vì backend trên Render chưa có
-      // dispatch(fetchWeeklyTrendReport(8));
-      // dispatch(fetchYearlyTrendReport(3));
+      dispatch(fetchWeeklyTrendReport());
+      dispatch(fetchYearlyTrendReport(5));
     }, [dispatch])
   );
 
@@ -52,13 +51,63 @@ export default function AnalyticsScreen() {
   }
 
   // Prepare chart data - show trend based on selected period and view
-  // Tạm thời dùng data tháng cho tất cả period vì backend chưa deploy
   const getChartData = () => {
     let labels: string[] = [];
     let data: number[] = [];
 
-    if (trendReport.length > 0) {
-      // Luôn dùng data tháng từ trendReport
+    if (selectedPeriod === 'week' && weeklyTrendReport.length > 0) {
+      // Hiển thị 7 ngày trong tuần (T2 - CN) với dữ liệu thực tế
+      // dayOfWeek từ backend: 1=T2, 2=T3, 3=T4, 4=T5, 5=T6, 6=T7, 7=CN
+      const dayLabels: { [key: number]: string } = {
+        1: 'T2',
+        2: 'T3',
+        3: 'T4',
+        4: 'T5',
+        5: 'T6',
+        6: 'T7',
+        7: 'CN'
+      };
+      
+      // Sắp xếp theo dayOfWeek để đảm bảo thứ tự T2->CN
+      const sortedTrends = [...weeklyTrendReport].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+      
+      // Debug: Log để kiểm tra dữ liệu
+      console.log('Weekly trends:', sortedTrends.map(t => ({ day: t.dayOfWeek, date: t.date })));
+      
+      labels = sortedTrends.map(trend => {
+        const dayNum = Number(trend.dayOfWeek); // Đảm bảo là number
+        return dayLabels[dayNum] || `Day${dayNum}`;
+      });
+      
+      data = sortedTrends.map(trend => {
+        switch (selectedView) {
+          case 'income':
+            return trend.income;
+          case 'expense':
+            return trend.expense;
+          case 'balance':
+            return Math.abs(trend.balance);
+          default:
+            return 0;
+        }
+      });
+    } else if (selectedPeriod === 'year' && yearlyTrendReport.length > 0) {
+      // Hiển thị 5 năm gần nhất
+      labels = yearlyTrendReport.map(trend => `${trend.year}`);
+      data = yearlyTrendReport.map(trend => {
+        switch (selectedView) {
+          case 'income':
+            return trend.income;
+          case 'expense':
+            return trend.expense;
+          case 'balance':
+            return Math.abs(trend.balance);
+          default:
+            return 0;
+        }
+      });
+    } else if (selectedPeriod === 'month' && trendReport.length > 0) {
+      // Hiển thị 6 tháng gần nhất
       labels = trendReport.map(trend => `T${trend.month}`);
       data = trendReport.map(trend => {
         switch (selectedView) {

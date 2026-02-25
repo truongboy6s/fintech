@@ -59,9 +59,8 @@ export interface TrendReport {
 }
 
 export interface WeeklyTrendReport {
-  weekNumber: number;
-  startDate: string;
-  endDate: string;
+  dayOfWeek: number; // 1=T2, 2=T3, ..., 7=CN
+  date: string;
   income: number;
   expense: number;
   balance: number;
@@ -117,12 +116,9 @@ class ReportService {
     }
   }
 
-  async getWeeklyTrendReport(weeks?: number): Promise<WeeklyTrendReport[]> {
+  async getWeeklyTrendReport(): Promise<WeeklyTrendReport[]> {
     try {
-      const params: any = {};
-      if (weeks) params.weeks = weeks;
-      
-      return await apiClient.get<WeeklyTrendReport[]>('/reports/trend/weekly', { params });
+      return await apiClient.get<WeeklyTrendReport[]>('/reports/trend/weekly');
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Không thể lấy báo cáo xu hướng tuần');
     }
