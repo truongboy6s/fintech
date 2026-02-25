@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Modal,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -14,12 +16,14 @@ import { Layout } from '@/constants/layout';
 import { Card, CustomButton } from '@/components/ui';
 import { formatCurrency, formatCurrencyShort } from '@/utils/formatCurrency';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchBudgets } from '@/store/slices/budget.slice';
+import { fetchBudgets, deleteBudget } from '@/store/slices/budget.slice';
 
 export default function BudgetsScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { list: budgets, loading } = useAppSelector((state) => state.budgets);
+  const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
+  const [showActionModal, setShowActionModal] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -35,6 +39,53 @@ export default function BudgetsScreen() {
     if (percentage >= 90) return Colors.error;
     if (percentage >= 70) return Colors.warning;
     return Colors.success;
+  };
+
+  const handleOpenActionModal = (budgetId: string) => {
+    setSelectedBudgetId(budgetId);
+    setShowActionModal(true);
+  };
+
+  const handleCloseActionModal = () => {
+    setShowActionModal(false);
+    setTimeout(() => setSelectedBudgetId(null), 300);
+  };
+
+  const handleEditBudget = () => {
+    if (selectedBudgetId) {
+      handleCloseActionModal();
+      router.push(`/edit-budget?id=${selectedBudgetId}` as any);
+    }
+  };
+
+  const handleDeleteBudget = () => {
+    if (!selectedBudgetId) return;
+
+    const budget = budgets.find(b => b.id === selectedBudgetId);
+    handleCloseActionModal();
+
+    Alert.alert(
+      'Xóa ngân sách',
+      `Bạn có chắc muốn xóa ngân sách "${budget?.name}"?`,
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dispatch(deleteBudget(selectedBudgetId)).unwrap();
+              Alert.alert('Thành công', 'Đã xóa ngân sách');
+            } catch (error: any) {
+              Alert.alert('Lỗi', error.message || 'Không thể xóa ngân sách');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -88,7 +139,7 @@ export default function BudgetsScreen() {
                         </Text>
                       </View>
                     </View>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleOpenActionModal(budget.id)}>
                       <Ionicons name="ellipsis-horizontal" size={24} color={Colors.textMuted} />
                     </TouchableOpacity>
                   </View>
@@ -138,6 +189,54 @@ export default function BudgetsScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Action Modal */}
+      <Modal
+        visible={showActionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCloseActionModal}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={handleCloseActionModal}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Tùy chọn</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.modalOption}
+              onPress={handleEditBudget}
+            >
+              <Ionicons name="create-outline" size={24} color={Colors.primary} />
+              <Text style={styles.modalOptionText}>Chỉnh sửa ngân sách</Text>
+            </TouchableOpacity>
+
+            <View style={styles.modalDivider} />
+
+            <TouchableOpacity 
+              style={styles.modalOption}
+              onPress={handleDeleteBudget}
+            >
+              <Ionicons name="trash-outline" size={24} color={Colors.error} />
+              <Text style={[styles.modalOptionText, { color: Colors.error }]}>Xóa ngân sách</Text>
+            </TouchableOpacity>
+
+            <View style={styles.modalDivider} />
+
+            <TouchableOpacity 
+              style={styles.modalOption}
+              onPress={handleCloseActionModal}
+            >
+              <Ionicons name="close-outline" size={24} color={Colors.textMuted} />
+              <Text style={styles.modalOptionText}>Hủy</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -295,5 +394,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primary,
     marginLeft: Layout.spacing.sm,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.backgroundLight,
+    borderTopLeftRadius: Layout.borderRadius.xl,
+    borderTopRightRadius: Layout.borderRadius.xl,
+    paddingBottom: Layout.spacing.xxl,
+  },
+  modalHeader: {
+    paddingVertical: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: Layout.fontSize.lg,
+    fontWeight: 'bold',
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Layout.spacing.lg,
+    paddingHorizontal: Layout.spacing.xl,
+    gap: Layout.spacing.md,
+  },
+  modalOptionText: {
+    fontSize: Layout.fontSize.md,
+    color: Colors.text,
+    fontWeight: '500',
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginHorizontal: Layout.spacing.lg,
   },
 });

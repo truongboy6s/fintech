@@ -27,6 +27,20 @@ export interface User {
   name: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 class AuthService {
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
@@ -99,6 +113,42 @@ class AuthService {
     } catch (error) {
       console.error('Error getting token:', error);
       return null;
+    }
+  }
+
+  async forgotPassword(data: ForgotPasswordRequest): Promise<{ message: string; resetToken?: string }> {
+    try {
+      console.log('📧 Đang gửi yêu cầu reset mật khẩu...');
+      const response = await apiClient.post<{ message: string; resetToken?: string }>('/auth/forgot-password', data);
+      console.log('✅ Đã gửi email reset mật khẩu');
+      return response as { message: string; resetToken?: string };
+    } catch (error: any) {
+      console.error('❌ Lỗi forgot password:', error);
+      throw new Error(error.response?.data?.message || 'Không thể gửi yêu cầu reset mật khẩu');
+    }
+  }
+
+  async resetPassword(data: ResetPasswordRequest): Promise<{ message: string }> {
+    try {
+      console.log('🔑 Đang reset mật khẩu...');
+      const response = await apiClient.post<{ message: string }>('/auth/reset-password', data);
+      console.log('✅ Reset mật khẩu thành công');
+      return response as { message: string };
+    } catch (error: any) {
+      console.error('❌ Lỗi reset password:', error);
+      throw new Error(error.response?.data?.message || 'Không thể reset mật khẩu');
+    }
+  }
+
+  async changePassword(data: ChangePasswordRequest): Promise<{ message: string }> {
+    try {
+      console.log('🔐 Đang đổi mật khẩu...');
+      const response = await apiClient.post<{ message: string }>('/auth/change-password', data);
+      console.log('✅ Đổi mật khẩu thành công');
+      return response as { message: string };
+    } catch (error: any) {
+      console.error('❌ Lỗi change password:', error);
+      throw new Error(error.response?.data?.message || 'Không thể đổi mật khẩu');
     }
   }
 }

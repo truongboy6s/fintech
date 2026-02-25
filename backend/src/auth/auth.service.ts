@@ -1,8 +1,11 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import * as bcrypt from 'bcrypt';
 import { AuthResponse } from './types/auth-response.type';
 
@@ -120,5 +123,120 @@ export class AuthService {
         createdAt: true,
       },
     });
+  }
+
+  /**
+   * Quên mật khẩu
+   * - Kiểm tra email có tồn tại không
+   * - Tạo reset token (JWT với thời gian hết hạn ngắn)
+   * - Trong thực tế cần gửi email, ở đây trả về token để test
+   */
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: forgotPasswordDto.email },
+    });
+
+    if (!user) {
+      // Không nên tiết lộ email có tồn tại hay không để bảo mật
+      // Nhưng để đơn giản, ta sẽ throw error
+      throw new NotFoundException('Email not found');
+    }
+
+    // Tạo reset token với thời gian hết hạn 15 phút
+    const resetToken = this.jwtService.sign(
+      { userId: user.id, email: user.email, type: 'reset' },
+      { expiresIn: '15m' }
+    );
+
+    // Trong thực tế: Gửi email chứa link reset password với token
+    // Ví dụ: https://app.com/reset-password?token=xyz
+    
+    return {
+      message: 'Reset password token created',
+      resetToken, // Chỉ để test, trong production không trả token trực tiếp
+      // Trong production: trả về message "Email sent" thay vì token
+    };
+  }
+
+  /**
+   * Reset mật khẩu với token
+   * - Verify token
+   * - Cập nhật mật khẩu mới
+   */
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    try {
+      // Verify token
+      const payload = this.jwtService.verify(resetPasswordDto.token);
+
+      if (payload.type !== 'reset') {
+        throw new BadRequestException('Invalid reset token');
+      }
+
+      // Hash mật khẩu mới
+      const hashedPassword = await bcrypt.hash(resetPasswordDto.newPassword, 10);
+
+      // Cập nhật mật khẩu
+      await this.prisma.user.update({
+        where: { id: payload.userId },
+        data: { password: hashedPassword },
+      });
+
+      return {
+        message: 'Password reset successfully',
+      };
+    } catch (error) {
+      if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+        throw new BadRequestException('Invalid or expired reset token');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Đổi mật khẩu (khi đã đăng nhập)
+   * - Verify mật khẩu hiện tại
+   * - Cập nhật mật khẩu mới
+   */
+  async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
+    // Lấy thông tin user
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Kiểm tra mật khẩu hiện tại có đúng không
+    const isPasswordValid = await bcrypt.compare(
+      changePasswordDto.currentPassword,
+      user.password,
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    // Kiểm tra mật khẩu mới không trùng với mật khẩu cũ
+    const isSamePassword = await bcrypt.compare(
+      changePasswordDto.newPassword,
+      user.password,
+    );
+
+    if (isSamePassword) {
+      throw new BadRequestException('New password must be different from current password');
+    }
+
+    // Hash và cập nhật mật khẩu mới
+    const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return {
+      message: 'Password changed successfully',
+    };
   }
 }
