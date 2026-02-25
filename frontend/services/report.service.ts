@@ -58,6 +58,22 @@ export interface TrendReport {
   balance: number;
 }
 
+export interface WeeklyTrendReport {
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  income: number;
+  expense: number;
+  balance: number;
+}
+
+export interface YearlyTrendReport {
+  year: number;
+  income: number;
+  expense: number;
+  balance: number;
+}
+
 export interface ExportOptions {
   format: 'pdf' | 'excel';
   startDate?: string;
@@ -98,6 +114,28 @@ class ReportService {
       return await apiClient.get<TrendReport[]>('/reports/trend', { params });
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Không thể lấy báo cáo xu hướng');
+    }
+  }
+
+  async getWeeklyTrendReport(weeks?: number): Promise<WeeklyTrendReport[]> {
+    try {
+      const params: any = {};
+      if (weeks) params.weeks = weeks;
+      
+      return await apiClient.get<WeeklyTrendReport[]>('/reports/trend/weekly', { params });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể lấy báo cáo xu hướng tuần');
+    }
+  }
+
+  async getYearlyTrendReport(years?: number): Promise<YearlyTrendReport[]> {
+    try {
+      const params: any = {};
+      if (years) params.years = years;
+      
+      return await apiClient.get<YearlyTrendReport[]>('/reports/trend/yearly', { params });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Không thể lấy báo cáo xu hướng năm');
     }
   }
 

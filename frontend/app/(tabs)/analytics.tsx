@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchMonthlyReport, fetchTrendReport } from '@/store/slices/report.slice';
+import { fetchMonthlyReport, fetchTrendReport, fetchWeeklyTrendReport, fetchYearlyTrendReport } from '@/store/slices/report.slice';
 import { formatCurrency } from '@/utils/formatCurrency';
 
 const screenWidth = Dimensions.get('window').width;
@@ -24,7 +24,7 @@ type ViewType = 'income' | 'expense' | 'balance';
 
 export default function AnalyticsScreen() {
   const dispatch = useAppDispatch();
-  const { monthlyReport, trendReport, loading } = useAppSelector((state) => state.report);
+  const { monthlyReport, trendReport, weeklyTrendReport, yearlyTrendReport, loading } = useAppSelector((state) => state.report);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('month');
   const [selectedView, setSelectedView] = useState<ViewType>('balance');
   const [showComparison, setShowComparison] = useState(false);
@@ -37,6 +37,9 @@ export default function AnalyticsScreen() {
         month: currentDate.getMonth() + 1 
       }));
       dispatch(fetchTrendReport(6));
+      // Tạm thời không gọi weekly/yearly vì backend trên Render chưa có
+      // dispatch(fetchWeeklyTrendReport(8));
+      // dispatch(fetchYearlyTrendReport(3));
     }, [dispatch])
   );
 
@@ -48,26 +51,40 @@ export default function AnalyticsScreen() {
     );
   }
 
-  // Prepare chart data - show monthly trend based on selected view
-  const chartData = {
-    labels: trendReport.map(trend => `T${trend.month}`),
-    datasets: [{
-      data: trendReport.length > 0 
-        ? trendReport.map(trend => {
-            switch (selectedView) {
-              case 'income':
-                return trend.income;
-              case 'expense':
-                return trend.expense;
-              case 'balance':
-                return Math.abs(trend.balance);
-              default:
-                return 0;
-            }
-          })
-        : [0, 0, 0, 0, 0, 0],
-    }],
+  // Prepare chart data - show trend based on selected period and view
+  // Tạm thời dùng data tháng cho tất cả period vì backend chưa deploy
+  const getChartData = () => {
+    let labels: string[] = [];
+    let data: number[] = [];
+
+    if (trendReport.length > 0) {
+      // Luôn dùng data tháng từ trendReport
+      labels = trendReport.map(trend => `T${trend.month}`);
+      data = trendReport.map(trend => {
+        switch (selectedView) {
+          case 'income':
+            return trend.income;
+          case 'expense':
+            return trend.expense;
+          case 'balance':
+            return Math.abs(trend.balance);
+          default:
+            return 0;
+        }
+      });
+    } else {
+      // Default empty data
+      labels = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
+      data = [0, 0, 0, 0, 0, 0];
+    }
+
+    return {
+      labels,
+      datasets: [{ data }],
+    };
   };
+
+  const chartData = getChartData();
 
   // Calculate total based on selected view
   const getTotalAmount = () => {
@@ -285,25 +302,29 @@ export default function AnalyticsScreen() {
               </View>
               <View style={styles.transactionHeaderRight}>
                 <Text style={styles.transactionLabel}>Còn lại</Text>
-                <Text style={[styles.transactionValue, { color: Colors.error }]}>
-                  {formatCurrency(150000)}
+                <Text style={[styles.transactionValue, { color: monthlyReport.summary.balance >= 0 ? Colors.success : Colors.error }]}>
+                  {monthlyReport.summary.balance >= 0 ? '+' : ''}{formatCurrency(monthlyReport.summary.balance)}
                 </Text>
               </View>
             </View>
 
-            {monthlyReport.transactions.slice(0, 5).map((transaction: any) => (
-              <View key={transaction.id} style={styles.transactionRow}>
-                <View style={styles.transactionLeft}>
-                  <Text style={styles.transactionTitle}>{transaction.description || 'Ghi chú'}</Text>
-                  <Text style={styles.transactionSubtitle}>
-                    Chi {formatCurrency(transaction.amount)}đ
+            {monthlyReport.transactions.slice(0, 5).map((transaction: any) => {
+              const isIncome = transaction.type === 'INCOME';
+              const amount = transaction.amount;
+              return (
+                <View key={transaction.id} style={styles.transactionRow}>
+                  <View style={styles.transactionLeft}>
+                    <Text style={styles.transactionTitle}>{transaction.description || transaction.category?.name || 'Ghi chú'}</Text>
+                    <Text style={styles.transactionSubtitle}>
+                      {isIncome ? 'Thu' : 'Chi'} {formatCurrency(amount)}đ
+                    </Text>
+                  </View>
+                  <Text style={[styles.transactionAmount, { color: isIncome ? Colors.success : Colors.error }]}>
+                    {isIncome ? '+' : '-'}{formatCurrency(amount)}
                   </Text>
                 </View>
-                <Text style={[styles.transactionAmount, { color: Colors.error }]}>
-                  -{formatCurrency(transaction.amount)}
-                </Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
 

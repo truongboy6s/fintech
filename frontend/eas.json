@@ -12,6 +12,9 @@
       },
       "ios": {
         "buildConfiguration": "Debug"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://192.168.1.103:3000/api"
       }
     },
     "preview": {
@@ -21,6 +24,9 @@
       },
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://fintech-ueb5.onrender.com/api"
       }
     },
     "production": {
@@ -29,6 +35,9 @@
       },
       "ios": {
         "buildConfiguration": "Release"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://fintech-ueb5.onrender.com/api"
       }
     }
   },

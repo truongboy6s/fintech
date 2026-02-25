@@ -134,6 +134,92 @@ export class ReportsService {
     return trends;
   }
 
+  // Báo cáo xu hướng theo tuần
+  async getWeeklyTrendReport(userId: string, weeks: number = 8) {
+    const trends = [];
+    const now = new Date();
+
+    for (let i = weeks - 1; i >= 0; i--) {
+      const endDate = new Date(now);
+      endDate.setDate(endDate.getDate() - (i * 7));
+      endDate.setHours(23, 59, 59, 999);
+      
+      const startDate = new Date(endDate);
+      startDate.setDate(startDate.getDate() - 6);
+      startDate.setHours(0, 0, 0, 0);
+
+      const [income, expense] = await Promise.all([
+        this.prisma.transaction.aggregate({
+          where: {
+            userId,
+            type: 'INCOME',
+            date: { gte: startDate, lte: endDate },
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.transaction.aggregate({
+          where: {
+            userId,
+            type: 'EXPENSE',
+            date: { gte: startDate, lte: endDate },
+          },
+          _sum: { amount: true },
+        }),
+      ]);
+
+      trends.push({
+        weekNumber: weeks - i,
+        startDate,
+        endDate,
+        income: income._sum.amount || 0,
+        expense: expense._sum.amount || 0,
+        balance: (income._sum.amount || 0) - (expense._sum.amount || 0),
+      });
+    }
+
+    return trends;
+  }
+
+  // Báo cáo xu hướng theo năm
+  async getYearlyTrendReport(userId: string, years: number = 3) {
+    const trends = [];
+    const now = new Date();
+
+    for (let i = years - 1; i >= 0; i--) {
+      const year = now.getFullYear() - i;
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31, 23, 59, 59);
+
+      const [income, expense] = await Promise.all([
+        this.prisma.transaction.aggregate({
+          where: {
+            userId,
+            type: 'INCOME',
+            date: { gte: startDate, lte: endDate },
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.transaction.aggregate({
+          where: {
+            userId,
+            type: 'EXPENSE',
+            date: { gte: startDate, lte: endDate },
+          },
+          _sum: { amount: true },
+        }),
+      ]);
+
+      trends.push({
+        year,
+        income: income._sum.amount || 0,
+        expense: expense._sum.amount || 0,
+        balance: (income._sum.amount || 0) - (expense._sum.amount || 0),
+      });
+    }
+
+    return trends;
+  }
+
   // Báo cáo so sánh budget vs thực tế
   async getBudgetReport(userId: string) {
     const budgets = await this.prisma.budget.findMany({

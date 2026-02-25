@@ -36,6 +36,18 @@ export class ReportsController {
     );
   }
 
+  @Get('trend/weekly')
+  getWeeklyTrendReport(@Request() req, @Query('weeks') weeks?: string) {
+    const weeksNum = weeks ? parseInt(weeks) : 8;
+    return this.reportsService.getWeeklyTrendReport(req.user.userId, weeksNum);
+  }
+
+  @Get('trend/yearly')
+  getYearlyTrendReport(@Request() req, @Query('years') years?: string) {
+    const yearsNum = years ? parseInt(years) : 3;
+    return this.reportsService.getYearlyTrendReport(req.user.userId, yearsNum);
+  }
+
   @Get('trend')
   getTrendReport(@Request() req, @Query('months') months?: string) {
     const monthsNum = months ? parseInt(months) : 6;

@@ -30,6 +30,7 @@ export interface User {
 class AuthService {
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
+      console.log('🔐 Đang đăng nhập...');
       const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
       
       // Lưu token vào secure storage
@@ -37,14 +38,23 @@ class AuthService {
         await SecureStore.setItemAsync('authToken', response.accessToken);
       }
       
+      console.log('✅ Đăng nhập thành công');
       return response;
     } catch (error: any) {
+      console.error('❌ Lỗi đăng nhập:', error);
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('Timeout - Server mất quá lâu để phản hồi. Vui lòng thử lại.');
+      }
+      if (error.message === 'Network Error') {
+        throw new Error('Lỗi kết nối mạng. Kiểm tra Internet và thử lại.');
+      }
       throw new Error(error.response?.data?.message || 'Đăng nhập thất bại');
     }
   }
 
   async register(data: RegisterRequest): Promise<AuthResponse> {
     try {
+      console.log('📝 Đang đăng ký...');
       const response = await apiClient.post<AuthResponse>('/auth/register', data);
       
       // Lưu token vào secure storage
@@ -52,8 +62,16 @@ class AuthService {
         await SecureStore.setItemAsync('authToken', response.accessToken);
       }
       
+      console.log('✅ Đăng ký thành công');
       return response;
     } catch (error: any) {
+      console.error('❌ Lỗi đăng ký:', error);
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('Timeout - Server mất quá lâu để phản hồi. Vui lòng thử lại.');
+      }
+      if (error.message === 'Network Error') {
+        throw new Error('Lỗi kết nối mạng. Kiểm tra Internet và thử lại.');
+      }
       throw new Error(error.response?.data?.message || 'Đăng ký thất bại');
     }
   }

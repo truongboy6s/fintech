@@ -1,10 +1,12 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { reportService, MonthlyReport, CategoryReport, TrendReport } from '../../services/report.service';
+import { reportService, MonthlyReport, CategoryReport, TrendReport, WeeklyTrendReport, YearlyTrendReport } from '../../services/report.service';
 
 interface ReportState {
   monthlyReport: MonthlyReport | null;
   categoryReports: { [categoryId: string]: CategoryReport };
   trendReport: TrendReport[];
+  weeklyTrendReport: WeeklyTrendReport[];
+  yearlyTrendReport: YearlyTrendReport[];
   selectedCategoryId: string | null;
   loading: boolean;
   error: string | null;
@@ -14,6 +16,8 @@ const initialState: ReportState = {
   monthlyReport: null,
   categoryReports: {},
   trendReport: [],
+  weeklyTrendReport: [],
+  yearlyTrendReport: [],
   selectedCategoryId: null,
   loading: false,
   error: null,
@@ -41,6 +45,20 @@ export const fetchTrendReport = createAsyncThunk(
   }
 );
 
+export const fetchWeeklyTrendReport = createAsyncThunk(
+  'report/fetchWeeklyTrendReport',
+  async (weeks?: number) => {
+    return await reportService.getWeeklyTrendReport(weeks);
+  }
+);
+
+export const fetchYearlyTrendReport = createAsyncThunk(
+  'report/fetchYearlyTrendReport',
+  async (years?: number) => {
+    return await reportService.getYearlyTrendReport(years);
+  }
+);
+
 const reportSlice = createSlice({
   name: 'report',
   initialState,
@@ -52,6 +70,8 @@ const reportSlice = createSlice({
       state.monthlyReport = null;
       state.categoryReports = {};
       state.trendReport = [];
+      state.weeklyTrendReport = [];
+      state.yearlyTrendReport = [];
       state.selectedCategoryId = null;
       state.error = null;
     },
@@ -101,6 +121,36 @@ const reportSlice = createSlice({
       .addCase(fetchTrendReport.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Không thể tải báo cáo xu hướng';
+      });
+
+    // Fetch weekly trend report
+    builder
+      .addCase(fetchWeeklyTrendReport.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchWeeklyTrendReport.fulfilled, (state, action) => {
+        state.loading = false;
+        state.weeklyTrendReport = action.payload;
+      })
+      .addCase(fetchWeeklyTrendReport.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Không thể tải báo cáo xu hướng tuần';
+      });
+
+    // Fetch yearly trend report
+    builder
+      .addCase(fetchYearlyTrendReport.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchYearlyTrendReport.fulfilled, (state, action) => {
+        state.loading = false;
+        state.yearlyTrendReport = action.payload;
+      })
+      .addCase(fetchYearlyTrendReport.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Không thể tải báo cáo xu hướng năm';
       });
   },
 });

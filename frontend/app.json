@@ -55,7 +55,8 @@
       "router": {},
       "eas": {
         "projectId": "ad6487b7-4c87-42a7-9939-8e122b7fe375"
-      }
+      },
+      "apiUrl": "https://fintech-ueb5.onrender.com/api"
     }
   }
 }
