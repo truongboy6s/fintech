@@ -17,18 +17,21 @@ const getApiUrl = () => {
     return process.env.EXPO_PUBLIC_API_URL;
   }
 
-  // 2️⃣ Production build (APK / Store)
-  if (!__DEV__) {
-    return 'https://fintech-ueb5.onrender.com/api';
-  }
+  // 🔥 Force dùng Render cho dev + production
+  return 'https://fintech-ueb5.onrender.com/api';
 
-  // 3️⃣ Development mode
-  if (Platform.OS === 'ios') {
-    return 'http://localhost:3000/api';
-  }
+  // 2️⃣ Production build (APK / Store)
+  // if (!__DEV__) {
+  //   return 'https://fintech-ueb5.onrender.com/api';
+  // }
+
+  // 3️⃣ Development mode với backend local
+  // if (Platform.OS === 'ios') {
+  //   return 'http://localhost:3000/api';
+  // }
 
   // Android dev dùng IP máy tính
-  return 'http://192.168.1.103:3000/api';
+  // return 'http://192.168.1.103:3000/api';
 };
 
 const API_BASE_URL = getApiUrl();

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { BarChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
@@ -23,6 +24,7 @@ type PeriodType = 'week' | 'month' | 'year';
 type ViewType = 'income' | 'expense' | 'balance';
 
 export default function AnalyticsScreen() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const { monthlyReport, trendReport, weeklyTrendReport, yearlyTrendReport, loading } = useAppSelector((state) => state.report);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('month');
@@ -180,7 +182,7 @@ export default function AnalyticsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
           <Ionicons name="chevron-back" size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Biến động thu chi</Text>
@@ -254,19 +256,6 @@ export default function AnalyticsScreen() {
             ]}>
               {getTotalAmount() < 0 ? '-' : ''}{formatCurrency(Math.abs(getTotalAmount()))}
             </Text>
-            <View style={styles.comparisonRow}>
-              <Ionicons 
-                name={getTotalAmount() >= 0 ? 'trending-up' : 'trending-down'} 
-                size={16} 
-                color={getTotalAmount() >= 0 ? Colors.success : Colors.error} 
-              />
-              <Text style={[styles.comparisonText, { color: getTotalAmount() >= 0 ? Colors.success : Colors.error }]}>
-                {getTotalAmount() >= 0 ? 'Tăng' : 'Giảm'} {formatCurrency(Math.abs(getTotalAmount() * 0.1))}đ so với cùng kỳ tháng trước
-              </Text>
-              <TouchableOpacity>
-                <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
           </View>
         )}
 
